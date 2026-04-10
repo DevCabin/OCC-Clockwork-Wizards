@@ -30,9 +30,10 @@ Amazon Product Advertising API blocks direct browser calls due to CORS policy. T
 - [x] Commit and push changes
 
 ### New Deployment
-- **URL**: https://occ-clockwork-wizards-bsib1hn6x-devcabins-projects.vercel.app
+- **URL**: https://occ-clockwork-wizards-eag6gdoos-devcabins-projects.vercel.app
 - **API Endpoint**: `/api/amazon-search`
-- **Commit**: `2c4b1b9` - "v1.0.2: Remove amazon-paapi from frontend bundle"
+- **Commit**: `767e407` - "v1.0.3: Fix Vercel config for API routes"
+- **Note**: SSL certificates being provisioned for nerdymugs.com
 
 ### Next Steps
 1. Disable Vercel authentication protection in dashboard

@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "amazon-paapi": "^1.0.7"
+    "creatorsapi-nodejs-sdk": "^1.2.0"
   }
 }

@@ -1,14 +1,7 @@
-// Vercel Serverless Function - Amazon API Proxy
-// Securely calls Amazon Product Advertising API from server-side
+// Vercel Serverless Function - Amazon Creators API Proxy
+// Uses official Creators API SDK with OAuth authentication
 
-const amazonPaapi = require('amazon-paapi');
-
-// CORS headers for browser access
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+const creatorsApi = require('creatorsapi-nodejs-sdk');
 
 module.exports = async (req, res) => {
   // Handle CORS preflight
@@ -31,59 +24,59 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Keywords array required' });
     }
 
-    // Get credentials from environment variables (server-side only)
-    const accessKey = process.env.VITE_AMAZON_ACCESS_KEY;
-    const secretKey = process.env.VITE_AMAZON_SECRET_KEY;
-    const partnerTag = process.env.VITE_AMAZON_ASSOCIATE_TAG || 'georgwebsi-20';
+    // Get credentials from environment variables
+    const credentialId = process.env.AMAZON_CREDENTIAL_ID || process.env.VITE_AMAZON_ACCESS_KEY;
+    const credentialSecret = process.env.AMAZON_CREDENTIAL_SECRET || process.env.VITE_AMAZON_SECRET_KEY;
+    const partnerTag = process.env.AMAZON_PARTNER_TAG || process.env.VITE_AMAZON_ASSOCIATE_TAG || 'georgwebsi-20';
 
-    if (!accessKey || !secretKey) {
+    if (!credentialId || !credentialSecret) {
       console.error('Amazon API credentials not configured');
       return res.status(500).json({ error: 'API credentials not configured' });
     }
 
-    // Amazon API configuration
-    const commonParameters = {
-      AccessKey: accessKey,
-      SecretKey: secretKey,
-      PartnerTag: partnerTag,
-      PartnerType: 'Associates',
-      Marketplace: 'www.amazon.com',
-    };
+    console.log('Searching Amazon Creators API for:', keywords.join(' '));
 
-    const requestParameters = {
-      Keywords: keywords.join(' '),
-      SearchIndex: category || 'All',
-      ItemPage: 1,
-      Resources: [
+    // Configure the Creators API client
+    // The SDK handles OAuth token management automatically
+    const client = new creatorsApi.ApiClient({
+      credentialId: credentialId,
+      credentialSecret: credentialSecret,
+      partnerTag: partnerTag,
+      marketplace: 'www.amazon.com',
+      region: 'us-east-1'
+    });
+
+    // Create search request
+    const searchRequest = new creatorsApi.SearchItemsRequest({
+      keywords: keywords.join(' '),
+      searchIndex: category || 'All',
+      itemPage: 1,
+      resources: [
         'Images.Primary.Large',
         'ItemInfo.Title',
         'Offers.Listings.Price',
-        'ItemInfo.Features',
-      ],
-    };
+        'ItemInfo.Features'
+      ]
+    });
 
-    console.log('Searching Amazon for:', keywords.join(' '));
+    // Execute search
+    const response = await client.searchItems(searchRequest);
 
-    const response = await amazonPaapi.SearchItems(
-      commonParameters,
-      requestParameters
-    );
-
-    if (!response.SearchResult?.Items) {
+    if (!response.searchResult || !response.searchResult.items) {
       console.log('No items found');
       return res.status(200).json({ products: [] });
     }
 
-    // Map Amazon response to our format
-    const products = response.SearchResult.Items
-      .filter((item) => item.ASIN && item.Images?.Primary?.Large?.URL)
+    // Map response to our format
+    const products = response.searchResult.items
+      .filter((item) => item.asin && item.images?.primary?.large?.url)
       .map((item) => ({
-        asin: item.ASIN,
-        title: item.ItemInfo?.Title?.DisplayValue || 'Unknown Product',
-        imageUrl: item.Images.Primary.Large.URL,
-        productUrl: `https://www.amazon.com/dp/${item.ASIN}?tag=${partnerTag}`,
-        price: item.Offers?.Listings?.[0]?.Price?.DisplayAmount || '$19.99',
-        features: item.ItemInfo?.Features?.DisplayValues || [],
+        asin: item.asin,
+        title: item.itemInfo?.title?.displayValue || 'Unknown Product',
+        imageUrl: item.images.primary.large.url,
+        productUrl: `https://www.amazon.com/dp/${item.asin}?tag=${partnerTag}`,
+        price: item.offers?.listings?.[0]?.price?.displayAmount || '$19.99',
+        features: item.itemInfo?.features?.displayValues || [],
       }));
 
     console.log(`Found ${products.length} products`);
@@ -94,11 +87,12 @@ module.exports = async (req, res) => {
     return res.status(200).json({ products });
 
   } catch (error) {
-    console.error('Amazon API error:', error);
+    console.error('Amazon Creators API error:', error);
     res.setHeader('Access-Control-Allow-Origin', '*');
     return res.status(500).json({ 
       error: 'API request failed',
-      message: error.message 
+      message: error.message,
+      details: error.stack
     });
   }
 };
