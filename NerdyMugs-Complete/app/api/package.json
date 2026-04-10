@@ -1,8 +1,0 @@
-{
-  "name": "amazon-api-proxy",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "creatorsapi-nodejs-sdk": "^1.2.0"
-  }
-}
