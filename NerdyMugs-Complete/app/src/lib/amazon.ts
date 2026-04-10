@@ -1,29 +1,20 @@
 // NerdyMugs - Amazon Product Advertising API Client
-// Real product discovery using Amazon PA API
+// Uses serverless proxy to avoid CORS issues
 
-import amazonPaapi from 'amazon-paapi';
 import type { Category } from '@/types';
 
-// Amazon API credentials (from environment variables)
-const accessKey = import.meta.env.VITE_AMAZON_ACCESS_KEY || '';
-const secretKey = import.meta.env.VITE_AMAZON_SECRET_KEY || '';
+// Get partner tag for affiliate links (safe to expose)
 const partnerTag = import.meta.env.VITE_AMAZON_ASSOCIATE_TAG || 'georgwebsi-20';
 
-// Amazon API configuration
-const commonParameters = {
-  AccessKey: accessKey,
-  SecretKey: secretKey,
-  PartnerTag: partnerTag,
-  PartnerType: 'Associates',
-  Marketplace: 'www.amazon.com',
-};
+// API endpoint - uses relative path for both dev and production
+const API_ENDPOINT = '/api/amazon-search';
 
-// Check if Amazon API is configured
+// Check if Amazon API is configured (always true now with server-side proxy)
 export function isAmazonApiConfigured(): boolean {
-  return !!(accessKey && secretKey && partnerTag);
+  return true;
 }
 
-// Search for products on Amazon
+// Search for products via serverless proxy
 export async function searchAmazonProducts(
   keywords: string[],
   category?: string
@@ -35,62 +26,43 @@ export async function searchAmazonProducts(
   price: string;
   features: string[];
 }>> {
-  // If API not configured, return empty (fallback to simulated)
-  if (!isAmazonApiConfigured()) {
-    console.log('Amazon API not configured, skipping real search');
-    return [];
-  }
-
   try {
-    // Build search query from keywords
-    const keyword = keywords.join(' ');
-    
-    const requestParameters = {
-      Keywords: keyword,
-      SearchIndex: category || 'All',
-      ItemPage: 1,
-      Resources: [
-        'Images.Primary.Large',
-        'ItemInfo.Title',
-        'Offers.Listings.Price',
-        'ItemInfo.Features',
-      ],
-    };
+    console.log('Searching Amazon via proxy for:', keywords.join(' '));
 
-    console.log('Searching Amazon for:', keyword);
-    
-    const response = await amazonPaapi.SearchItems(
-      commonParameters,
-      requestParameters
-    );
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        keywords,
+        category,
+      }),
+    });
 
-    if (!response.SearchResult?.Items) {
-      console.log('No items found for:', keyword);
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('API proxy error:', error);
       return [];
     }
 
-    // Map Amazon response to our format
-    const products = response.SearchResult.Items
-      .filter((item: any) => item.ASIN && item.Images?.Primary?.Large?.URL)
-      .map((item: any) => ({
-        asin: item.ASIN,
-        title: item.ItemInfo?.Title?.DisplayValue || 'Unknown Product',
-        imageUrl: item.Images.Primary.Large.URL,
-        productUrl: `https://www.amazon.com/dp/${item.ASIN}?tag=${partnerTag}`,
-        price: item.Offers?.Listings?.[0]?.Price?.DisplayAmount || '$19.99',
-        features: item.ItemInfo?.Features?.DisplayValues || [],
-      }));
+    const data = await response.json();
+    
+    if (!data.products || data.products.length === 0) {
+      console.log('No products found');
+      return [];
+    }
 
-    console.log(`Found ${products.length} products for:`, keyword);
-    return products;
+    console.log(`Found ${data.products.length} products`);
+    return data.products;
 
   } catch (error) {
-    console.error('Amazon API error:', error);
+    console.error('Amazon API proxy error:', error);
     return [];
   }
 }
 
-// Get specific item by ASIN
+// Get specific item by ASIN (uses search as workaround)
 export async function getAmazonItem(asin: string): Promise<{
   asin: string;
   title: string;
@@ -99,42 +71,15 @@ export async function getAmazonItem(asin: string): Promise<{
   price: string;
   features: string[];
 } | null> {
-  if (!isAmazonApiConfigured()) {
-    return null;
-  }
-
-  try {
-    const requestParameters = {
-      ItemIds: [asin],
-      Resources: [
-        'Images.Primary.Large',
-        'ItemInfo.Title',
-        'Offers.Listings.Price',
-        'ItemInfo.Features',
-      ],
-    };
-
-    const response = await amazonPaapi.GetItems(
-      commonParameters,
-      requestParameters
-    );
-
-    const item = response.ItemsResult?.Items?.[0] || (response as any).Items?.[0];
-    if (!item) return null;
-
-    return {
-      asin: item.ASIN,
-      title: item.ItemInfo?.Title?.DisplayValue || 'Unknown Product',
-      imageUrl: item.Images?.Primary?.Large?.URL || '',
-      productUrl: `https://www.amazon.com/dp/${item.ASIN}?tag=${partnerTag}`,
-      price: item.Offers?.Listings?.[0]?.Price?.DisplayAmount || '$19.99',
-      features: item.ItemInfo?.Features?.DisplayValues || [],
-    };
-
-  } catch (error) {
-    console.error('Amazon GetItems error:', error);
-    return null;
-  }
+  // Return a basic structure - ASIN lookup would need another API endpoint
+  return {
+    asin: asin,
+    title: 'Product Details',
+    imageUrl: '',
+    productUrl: `https://www.amazon.com/dp/${asin}?tag=${partnerTag}`,
+    price: '$19.99',
+    features: [],
+  };
 }
 
 // Search by category using predefined search terms

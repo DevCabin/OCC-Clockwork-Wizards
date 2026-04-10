@@ -48,3 +48,4 @@ coverage/
 *.pem
 .cache
 .parcel-cachePRE_PRODUCTION_ASSETS/NerdyMugs-credentials.csv
+PRE_PRODUCTION_ASSETS/NerdyMugs-credentials.csv
