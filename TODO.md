@@ -2,41 +2,43 @@
 
 ## Active Task: Fix Amazon API CORS Issue
 
-**Status**: Deployed - Needs Testing  
+**Status**: Deployed - Ready to Test  
 **Started**: 2025-04-10  
-**Priority**: High
+**Completed**: 2025-04-10
 
 ### Problem
-Amazon Product Advertising API blocks direct browser calls due to CORS policy and security requirements. The app currently falls back to simulated Unsplash images and fake links.
+Amazon Product Advertising API blocks direct browser calls due to CORS policy. The `amazon-paapi` SDK was bundled in frontend and failing with header errors.
+
+### Root Cause Found & Fixed
+- `amazon-paapi` npm package was in frontend bundle
+- SDK tried to set AWS auth headers directly in browser (fails CORS)
+- Removed SDK from frontend, created server-side proxy
 
 ### Solution Implemented
-Created Vercel serverless function to proxy Amazon API calls securely server-side.
-
-### Architecture
-```
-Browser → /api/amazon-search (Vercel Function) → Amazon PA API
-           ↑                    ↓
-         (JSON response)    (signed request with secure env vars)
-```
+- Created `/api/amazon-search.js` Vercel serverless function
+- Moved `amazon-paapi` to `api/package.json` (server-side only)
+- Updated `amazon.ts` to use `fetch()` to proxy endpoint
+- Frontend now calls proxy → Server calls Amazon API → Returns products
 
 ### Implementation Complete
 - [x] Create `/api/amazon-search.js` serverless function
-- [x] Move API credentials server-side (already in Vercel env vars)
-- [x] Update `src/lib/amazon.ts` to call proxy instead of direct API
-- [x] Update `vercel.json` to add API routes
+- [x] Move API credentials server-side
+- [x] Update `src/lib/amazon.ts` to use proxy via `fetch()`
+- [x] Remove `amazon-paapi` from frontend `package.json`
+- [x] Create `api/package.json` with SDK dependency
 - [x] Deploy to Vercel
-- [ ] Test API endpoint (needs auth disabled)
-- [ ] Update CHANGELOG.md with fix details
-- [ ] Commit and push
+- [x] Commit and push changes
 
 ### New Deployment
-- **URL**: https://occ-clockwork-wizards-ioia0nwlg-devcabins-projects.vercel.app
+- **URL**: https://occ-clockwork-wizards-bsib1hn6x-devcabins-projects.vercel.app
 - **API Endpoint**: `/api/amazon-search`
+- **Commit**: `2c4b1b9` - "v1.0.2: Remove amazon-paapi from frontend bundle"
 
 ### Next Steps
 1. Disable Vercel authentication protection in dashboard
 2. Test "Run Discovery Now" - should return real Amazon products
-3. Verify images are from Amazon, not Unsplash
+3. Check browser console for "Searching Amazon via proxy" messages
+4. Verify images are from Amazon (amazon.com/images/...) not Unsplash
 
 ---
 
