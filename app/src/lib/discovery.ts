@@ -5,8 +5,7 @@ import type { AppState, Category, Product } from '@/types';
 import { addProduct, addLog, trackCategoryUsage } from './db';
 import { 
   isAmazonApiConfigured, 
-  searchByCategory, 
-  getSimulatedProducts 
+  searchByCategory 
 } from './amazon';
 
 // Generate affiliate link (ensures tag is included)
@@ -107,10 +106,10 @@ export async function discoverProducts(
     }
   }
   
-  // Fallback to simulated if Amazon returns nothing
+  // Fallback to simulated only if the proxy is failing AND you explicitly want that.
+  // For production, it's better to surface the error than quietly show fake data.
   if (amazonProducts.length === 0) {
-    amazonProducts = getSimulatedProducts(category.name);
-    addLog(state, 'SIMULATED', `Using simulated products for ${category.name}`);
+    addLog(state, 'DISCOVERY_EMPTY', `No results returned for ${category.name}`);
   }
   
   // Get products not already in database

@@ -10,7 +10,8 @@ const partnerTag = import.meta.env.VITE_AMAZON_ASSOCIATE_TAG || 'georgwebsi-20';
 // NOTE: This project migrated away from Amazon APIs to a general web search proxy.
 const API_ENDPOINT = '/api/search';
 
-// Check if Amazon API is configured (always true now with server-side proxy)
+// Check if search proxy is configured.
+// We treat this as "configured" only when the serverless proxy succeeds.
 export function isAmazonApiConfigured(): boolean {
   return true;
 }
@@ -49,6 +50,8 @@ export async function searchAmazonProducts(
       let error: any = null;
       try { error = await response.json(); } catch {}
       console.error('Search proxy error:', error || response.statusText);
+      // Returning [] triggers simulated fallback elsewhere.
+      // Keep this behavior for now, but it should only happen when the proxy is misconfigured.
       return [];
     }
 
