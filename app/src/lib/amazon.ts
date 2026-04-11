@@ -7,8 +7,8 @@ import type { Category } from '@/types';
 const partnerTag = import.meta.env.VITE_AMAZON_ASSOCIATE_TAG || 'georgwebsi-20';
 
 // API endpoint - uses relative path for both dev and production
-// NOTE: This project migrated away from Amazon APIs to a general web search proxy.
-const API_ENDPOINT = '/api/search';
+// Uses server-side PA-API proxy.
+const API_ENDPOINT = '/api/paapi-search';
 
 // Check if search proxy is configured.
 // We treat this as "configured" only when the serverless proxy succeeds.
@@ -29,11 +29,9 @@ export async function searchAmazonProducts(
   features: string[];
 }>> {
   try {
-    // Keep existing call sites working, but the backend is now a general web search.
-    // IMPORTANT: The old code passed the category slug (e.g. "serenity") which is ambiguous.
     // Use mug-focused keywords so the result set matches the app's intent.
     const query = [category, ...keywords, 'mug'].filter(Boolean).join(' ').trim();
-    console.log('Searching via web-search proxy for:', query);
+    console.log('Searching via PA-API proxy for:', query);
 
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
@@ -41,10 +39,9 @@ export async function searchAmazonProducts(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query,
-        count: 8,
-        // Optional: constrain to Amazon. Remove/adjust if you want broader discovery.
-        site: 'amazon.com'
+        keywords: query,
+        searchIndex: 'All',
+        itemCount: 5,
       }),
     });
 
@@ -58,39 +55,14 @@ export async function searchAmazonProducts(
     }
 
     const data = await response.json();
-    const results: Array<{ title: string; url: string; description?: string; imageUrl?: string }> = data?.results || [];
+    const products = data?.products || [];
 
-    if (!results.length) {
-      console.log('No results found');
+    if (!products.length) {
+      console.log('No products found');
       return [];
     }
 
-    async function getOgImage(url: string): Promise<string> {
-      try {
-        const r = await fetch(`/api/og-image?url=${encodeURIComponent(url)}`);
-        if (!r.ok) return '';
-        const j = await r.json();
-        return j?.imageUrl || '';
-      } catch {
-        return '';
-      }
-    }
-
-    // Map generic results into the product shape the UI expects.
-    // If Brave doesn't provide an image, attempt OG image enrichment.
-    const mapped = await Promise.all(results.map(async (r, idx) => {
-      const imageUrl = r.imageUrl || (r.url ? await getOgImage(r.url) : '');
-      return {
-        asin: `search:${idx}:${r.url}`,
-        title: r.title || 'Unknown Product',
-        imageUrl,
-        productUrl: r.url,
-        price: '',
-        features: r.description ? [r.description] : [],
-      };
-    }));
-
-    return mapped;
+    return products;
 
   } catch (error) {
     console.error('Search proxy error:', error);
