@@ -30,7 +30,9 @@ export async function searchAmazonProducts(
 }>> {
   try {
     // Keep existing call sites working, but the backend is now a general web search.
-    const query = [category, ...keywords].filter(Boolean).join(' ').trim();
+    // IMPORTANT: The old code passed the category slug (e.g. "serenity") which is ambiguous.
+    // Use mug-focused keywords so the result set matches the app's intent.
+    const query = [category, ...keywords, 'mug'].filter(Boolean).join(' ').trim();
     console.log('Searching via web-search proxy for:', query);
 
     const response = await fetch(API_ENDPOINT, {

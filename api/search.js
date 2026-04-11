@@ -52,14 +52,20 @@ module.exports = async (req, res) => {
     const data = await r.json();
     const web = data?.web?.results || [];
 
-    const results = web.map((it) => ({
-      title: it?.title || '',
-      url: it?.url || '',
-      description: it?.description || '',
-      // Brave sometimes provides thumbnail data, surface it when present.
-      imageUrl: it?.thumbnail?.src || it?.thumbnail?.url || '',
-      source: 'brave'
-    })).filter(x => x.url);
+    const results = web.map((it) => {
+      const urlStr = it?.url || '';
+      const t = it?.thumbnail;
+      const thumb = t?.src || t?.url || '';
+      const isAmazonLogo = typeof thumb === 'string' && /amazon\.(?:png|jpg|jpeg|webp)/i.test(thumb);
+      return {
+        title: it?.title || '',
+        url: urlStr,
+        description: it?.description || '',
+        // Avoid generic amazon logo thumbnails, prefer OG fallback for those.
+        imageUrl: isAmazonLogo ? '' : thumb,
+        source: 'brave'
+      };
+    }).filter(x => x.url);
 
     return res.status(200).json({ results });
   } catch (err) {
