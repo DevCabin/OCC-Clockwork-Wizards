@@ -1,45 +1,88 @@
 # TODO.md - NerdyMugs Development Tasks
 
-## Active Task: Fix Amazon API CORS Issue
+## Active Task: Make discovery real + production-ready (PA-API + roadmap)
 
-**Status**: Deployed - Ready to Test  
-**Started**: 2025-04-10  
-**Completed**: 2025-04-10
+**Status**: In progress  
+**Updated**: 2026-04-11
 
-### Problem
-Amazon Product Advertising API blocks direct browser calls due to CORS policy. The `amazon-paapi` SDK was bundled in frontend and failing with header errors.
+### What we changed today (facts)
+We iterated through several approaches because the app was showing fake/simulated data and web-search results:
 
-### Root Cause Found & Fixed
-- `amazon-paapi` npm package was in frontend bundle
-- SDK tried to set AWS auth headers directly in browser (fails CORS)
-- Removed SDK from frontend, created server-side proxy
+1) **Brave Search proxy (no scraping)**
+- Added `api/search.js` (Brave Search API proxy)
+- Added `api/og-image.js` (OpenGraph image fallback)
+- Mapped search results into the app's `Product` shape
+- Removed the silent fallback to simulated products
+- Bumped the localStorage DB key to force-reset stale fake data
 
-### Solution Implemented
-- Created `/api/amazon-search.js` Vercel serverless function
-- Moved `amazon-paapi` to `api/package.json` (server-side only)
-- Updated `amazon.ts` to use `fetch()` to proxy endpoint
-- Frontend now calls proxy → Server calls Amazon API → Returns products
+2) **Vercel deployment issues we fixed**
+- Deployment protection (401) was blocking `/api/*`
+- SSH push from `gravitron` required adding a new GitHub SSH key
 
-### Implementation Complete
-- [x] Create `/api/amazon-search.js` serverless function
-- [x] Move API credentials server-side
-- [x] Update `src/lib/amazon.ts` to use proxy via `fetch()`
-- [x] Remove `amazon-paapi` from frontend `package.json`
-- [x] Create `api/package.json` with SDK dependency
-- [x] Deploy to Vercel
-- [x] Commit and push changes
+3) **Decision: move back to a real product API**
+Web search is not product data (wrong results, Amazon logo images, missing price). We decided to use **Amazon PA-API** server-side.
 
-### New Deployment
-- **URL**: https://occ-clockwork-wizards-eag6gdoos-devcabins-projects.vercel.app
-- **API Endpoint**: `/api/amazon-search`
-- **Commit**: `767e407` - "v1.0.3: Fix Vercel config for API routes"
-- **Note**: SSL certificates being provisioned for nerdymugs.com
+4) **PA-API implementation shipped (server-side, no client secrets)**
+- Vercel env vars renamed away from `VITE_*` (client) to `PAAPI_*` (server)
+- Added `api/paapi-search.js` using `amazon-paapi`
+- Switched frontend discovery to call `/api/paapi-search`
 
-### Next Steps
-1. Disable Vercel authentication protection in dashboard
-2. Test "Run Discovery Now" - should return real Amazon products
-3. Check browser console for "Searching Amazon via proxy" messages
-4. Verify images are from Amazon (amazon.com/images/...) not Unsplash
+### Current deployment URL
+- https://occ-clockwork-wizards-git-main-devcabins-projects.vercel.app/
+
+### Environment variables (Vercel)
+#### MUST be server-side only (do NOT prefix with VITE_)
+- `PAAPI_ACCESS_KEY`
+- `PAAPI_SECRET_KEY`
+- `PAAPI_PARTNER_TAG`
+- `PAAPI_HOST=webservices.amazon.com`
+- `PAAPI_REGION=us-east-1`
+
+#### Remove (unsafe / wrong place)
+- `VITE_AMAZON_ACCESS_KEY`
+- `VITE_AMAZON_SECRET_KEY`
+- `VITE_AMAZON_ASSOCIATE_TAG`
+
+### Step-by-step action plan (finish line)
+
+#### Phase 0: Verify PA-API is actually returning products (15 minutes)
+1) Wait for Vercel redeploy.
+2) Test endpoint directly:
+   - `POST /api/paapi-search`
+   - Body: `{ "keywords": "star trek mug", "itemCount": 3, "searchIndex": "All" }`
+3) Expected: `200 { products: [ { asin, title, imageUrl, price, productUrl, features } ... ] }`
+4) If error:
+   - capture the JSON `{ error, message }`
+   - fix env vars/region/partnerTag/signing issues accordingly
+
+#### Phase 1: Make the site experience sane (public vs admin) (1–2 hours)
+1) Separate routes:
+   - Public: `/` (browse + filters only)
+   - Admin: `/admin` (Run Now, config, import)
+2) Gate `/admin`:
+   - simplest: basic password gate via env var (stopgap)
+   - best: Supabase Auth (when DB migration begins)
+3) Remove any “generate posts” controls from the public UI.
+
+#### Phase 2: Database migration (Supabase) (half day)
+Goal: eliminate localStorage, make content shared across devices.
+1) Create Supabase project.
+2) Tables:
+   - `categories`
+   - `products` (asin unique)
+   - `posts` (product_id FK)
+   - optional: `logs`, `runs`
+3) Update `db.ts` layer to read/write Supabase instead of localStorage.
+4) Add a simple admin “seed categories” and “run discovery” that persists.
+
+#### Phase 3: Automation (blog-like cadence) (1–2 hours)
+1) Add Vercel Cron (or Supabase scheduled function) to run discovery daily.
+2) Create N posts/day and publish.
+
+### Notes / decisions
+- Amazon APIs must be called server-side only.
+- Web search is acceptable for prototypes, but it will always be noisy and image/price-poor.
+- We will treat fake/simulated products as a dev-only tool, not production behavior.
 
 ---
 
