@@ -7,7 +7,8 @@ import type { Category } from '@/types';
 const partnerTag = import.meta.env.VITE_AMAZON_ASSOCIATE_TAG || 'georgwebsi-20';
 
 // API endpoint - uses relative path for both dev and production
-const API_ENDPOINT = '/api/amazon-search';
+// NOTE: This project migrated away from Amazon APIs to a general web search proxy.
+const API_ENDPOINT = '/api/search';
 
 // Check if Amazon API is configured (always true now with server-side proxy)
 export function isAmazonApiConfigured(): boolean {
@@ -27,7 +28,9 @@ export async function searchAmazonProducts(
   features: string[];
 }>> {
   try {
-    console.log('Searching Amazon via proxy for:', keywords.join(' '));
+    // Keep existing call sites working, but the backend is now a general web search.
+    const query = [category, ...keywords].filter(Boolean).join(' ').trim();
+    console.log('Searching via web-search proxy for:', query);
 
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
@@ -35,29 +38,40 @@ export async function searchAmazonProducts(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        keywords,
-        category,
+        query,
+        count: 8,
+        // Optional: constrain to Amazon. Remove/adjust if you want broader discovery.
+        site: 'amazon.com'
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error('API proxy error:', error);
+      let error: any = null;
+      try { error = await response.json(); } catch {}
+      console.error('Search proxy error:', error || response.statusText);
       return [];
     }
 
     const data = await response.json();
-    
-    if (!data.products || data.products.length === 0) {
-      console.log('No products found');
+    const results: Array<{ title: string; url: string; description?: string }> = data?.results || [];
+
+    if (!results.length) {
+      console.log('No results found');
       return [];
     }
 
-    console.log(`Found ${data.products.length} products`);
-    return data.products;
+    // Map generic results into the product shape the UI expects.
+    return results.map((r, idx) => ({
+      asin: `search:${idx}:${r.url}`,
+      title: r.title || 'Unknown Product',
+      imageUrl: '',
+      productUrl: r.url,
+      price: '',
+      features: r.description ? [r.description] : [],
+    }));
 
   } catch (error) {
-    console.error('Amazon API proxy error:', error);
+    console.error('Search proxy error:', error);
     return [];
   }
 }
