@@ -56,6 +56,8 @@ module.exports = async (req, res) => {
       title: it?.title || '',
       url: it?.url || '',
       description: it?.description || '',
+      // Brave sometimes provides thumbnail data, surface it when present.
+      imageUrl: it?.thumbnail?.src || it?.thumbnail?.url || '',
       source: 'brave'
     })).filter(x => x.url);
 

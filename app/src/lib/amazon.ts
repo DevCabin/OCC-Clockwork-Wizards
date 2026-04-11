@@ -56,22 +56,39 @@ export async function searchAmazonProducts(
     }
 
     const data = await response.json();
-    const results: Array<{ title: string; url: string; description?: string }> = data?.results || [];
+    const results: Array<{ title: string; url: string; description?: string; imageUrl?: string }> = data?.results || [];
 
     if (!results.length) {
       console.log('No results found');
       return [];
     }
 
+    async function getOgImage(url: string): Promise<string> {
+      try {
+        const r = await fetch(`/api/og-image?url=${encodeURIComponent(url)}`);
+        if (!r.ok) return '';
+        const j = await r.json();
+        return j?.imageUrl || '';
+      } catch {
+        return '';
+      }
+    }
+
     // Map generic results into the product shape the UI expects.
-    return results.map((r, idx) => ({
-      asin: `search:${idx}:${r.url}`,
-      title: r.title || 'Unknown Product',
-      imageUrl: '',
-      productUrl: r.url,
-      price: '',
-      features: r.description ? [r.description] : [],
+    // If Brave doesn't provide an image, attempt OG image enrichment.
+    const mapped = await Promise.all(results.map(async (r, idx) => {
+      const imageUrl = r.imageUrl || (r.url ? await getOgImage(r.url) : '');
+      return {
+        asin: `search:${idx}:${r.url}`,
+        title: r.title || 'Unknown Product',
+        imageUrl,
+        productUrl: r.url,
+        price: '',
+        features: r.description ? [r.description] : [],
+      };
     }));
+
+    return mapped;
 
   } catch (error) {
     console.error('Search proxy error:', error);
