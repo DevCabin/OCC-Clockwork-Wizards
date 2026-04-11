@@ -21,9 +21,12 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const accessKey = process.env.PAAPI_ACCESS_KEY;
-    const secretKey = process.env.PAAPI_SECRET_KEY;
-    const partnerTag = process.env.PAAPI_PARTNER_TAG;
+    // Support both naming conventions:
+    // - Preferred: PAAPI_ACCESS_KEY / PAAPI_SECRET_KEY / PAAPI_PARTNER_TAG
+    // - Legacy/mobile-set: PAAPI_AMAZON_ACCESS_KEY / PAAPI_AMAZON_SECRET_KEY / PAAPI_AMAZON_ASSOCIATE_TAG
+    const accessKey = process.env.PAAPI_ACCESS_KEY || process.env.PAAPI_AMAZON_ACCESS_KEY;
+    const secretKey = process.env.PAAPI_SECRET_KEY || process.env.PAAPI_AMAZON_SECRET_KEY;
+    const partnerTag = process.env.PAAPI_PARTNER_TAG || process.env.PAAPI_AMAZON_ASSOCIATE_TAG;
     const host = process.env.PAAPI_HOST || 'webservices.amazon.com';
     const region = process.env.PAAPI_REGION || 'us-east-1';
 
