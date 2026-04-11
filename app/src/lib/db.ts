@@ -3,7 +3,9 @@
 import type { AppState, Product, Post, Category, LogEntry, SiteConfig, ScheduleConfig } from '@/types';
 import { siteConfig, scheduleConfig as defaultScheduleConfig, categoriesConfig } from '@/config/nerdyMugs';
 
-const DB_KEY = 'nerdy_mugs_v1';
+const DB_KEY = 'nerdy_mugs_v2';
+// Bump DB_KEY to force clients to pick up schema/behavior changes.
+// This is a blunt reset mechanism for a localStorage-backed app.
 
 // Generate unique IDs
 export function generateId(prefix: string = ''): string {
