@@ -55,21 +55,31 @@ export function formatTimeRemaining(ms: number): string {
 }
 
 // Run the full automation cycle
-export async function runAutomationCycle(state: AppState, targetCount?: number): Promise<{
+export async function runAutomationCycle(
+  state: AppState,
+  targetCount?: number,
+  options?: { bypassQuietDay?: boolean }
+): Promise<{
   success: boolean;
   productsDiscovered: number;
   postsCreated: number;
   error?: string;
 }> {
   try {
+    const bypassQuietDay = Boolean(options?.bypassQuietDay);
+
     // Check quiet day
-    if (isQuietDay(state.scheduleConfig.quietDays)) {
+    if (!bypassQuietDay && isQuietDay(state.scheduleConfig.quietDays)) {
       return {
         success: false,
         productsDiscovered: 0,
         postsCreated: 0,
         error: 'Today is a quiet day - no posts scheduled',
       };
+    }
+
+    if (bypassQuietDay && isQuietDay(state.scheduleConfig.quietDays)) {
+      addLog(state, 'QUIET_DAY_BYPASS', 'Manual run bypassed quiet day rule');
     }
     
     addLog(state, 'AUTOMATION_START', 'Starting automation cycle');
@@ -109,7 +119,7 @@ export async function runNow(state: AppState, count?: number): Promise<{
   error?: string;
 }> {
   addLog(state, 'MANUAL_TRIGGER', 'Manual automation cycle triggered');
-  return runAutomationCycle(state, count);
+  return runAutomationCycle(state, count, { bypassQuietDay: true });
 }
 
 // Initialize scheduler (checks periodically)

@@ -31,6 +31,14 @@ All notable changes to the NerdyMugs project will be documented in this file.
   - Added client-side completeness filtering and diagnostics logging in `app/src/lib/amazon.ts`.
   - Added discovery-level incomplete-product filtering + log signal in `app/src/lib/discovery.ts`.
 
+## [1.0.13] - 2026-04-12
+
+### Changed
+- Fixed manual automation trigger behavior on quiet days:
+  - Manual `Run Now` now bypasses quiet-day blocking.
+  - Scheduled automation still respects quiet days.
+  - Added `QUIET_DAY_BYPASS` log entry for traceability.
+
 ## [1.0.0] - 2025-04-10
 
 ### Added
