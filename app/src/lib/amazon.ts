@@ -3,6 +3,15 @@
 
 import type { Category } from '@/types';
 
+type AmazonProduct = {
+  asin: string;
+  title: string;
+  imageUrl: string;
+  productUrl: string;
+  price: string;
+  features: string[];
+};
+
 // Get partner tag for affiliate links (safe to expose)
 const partnerTag = import.meta.env.VITE_AMAZON_ASSOCIATE_TAG || 'georgwebsi-20';
 
@@ -20,16 +29,9 @@ export function isAmazonApiConfigured(): boolean {
 export async function searchAmazonProducts(
   keywords: string[],
   category?: string
-): Promise<Array<{
-  asin: string;
-  title: string;
-  imageUrl: string;
-  productUrl: string;
-  price: string;
-  features: string[];
-}>> {
+): Promise<AmazonProduct[]> {
   try {
-    // Use mug-focused keywords so the result set matches the app's intent.
+    // Mug-focused query for better relevance.
     const query = [category, ...keywords, 'mug'].filter(Boolean).join(' ').trim();
     console.log('Searching via PA-API proxy for:', query);
 
@@ -41,31 +43,45 @@ export async function searchAmazonProducts(
       body: JSON.stringify({
         keywords: query,
         searchIndex: 'All',
-        itemCount: 5,
+        itemCount: 8,
       }),
     });
 
     if (!response.ok) {
       let error: any = null;
       try { error = await response.json(); } catch {}
-      console.error('Search proxy error:', error || response.statusText);
-      // Returning [] triggers simulated fallback elsewhere.
-      // Keep this behavior for now, but it should only happen when the proxy is misconfigured.
+      console.error('PA-API proxy HTTP error:', response.status, error || response.statusText);
       return [];
     }
 
     const data = await response.json();
-    const products = data?.products || [];
+    const products = (data?.products || []) as AmazonProduct[];
+    const diagnostics = data?.diagnostics;
 
-    if (!products.length) {
-      console.log('No products found');
+    const complete = products.filter((p) =>
+      Boolean(p?.asin && p?.title && p?.imageUrl && p?.productUrl && p?.price)
+    );
+
+    if (diagnostics) {
+      console.log('PA-API diagnostics:', diagnostics);
+    }
+
+    if (products.length !== complete.length) {
+      console.warn('Dropped incomplete products from proxy response:', {
+        received: products.length,
+        kept: complete.length,
+      });
+    }
+
+    if (!complete.length) {
+      console.warn('No complete PA-API products found for query:', query);
       return [];
     }
 
-    return products;
+    return complete;
 
   } catch (error) {
-    console.error('Search proxy error:', error);
+    console.error('PA-API proxy fetch exception:', error);
     return [];
   }
 }
@@ -94,17 +110,10 @@ export async function getAmazonItem(asin: string): Promise<{
 export async function searchByCategory(
   category: Category,
   maxResults: number = 3
-): Promise<Array<{
-  asin: string;
-  title: string;
-  imageUrl: string;
-  productUrl: string;
-  price: string;
-  features: string[];
-}>> {
+): Promise<AmazonProduct[]> {
   // Try each search term until we get results
   for (const searchTerm of category.searchTerms) {
-    const results = await searchAmazonProducts([searchTerm]);
+    const results = await searchAmazonProducts([searchTerm], category.name);
     if (results.length > 0) {
       return results.slice(0, maxResults);
     }

@@ -120,9 +120,20 @@ export async function discoverProducts(
   }));
   
   const newProducts = amazonProducts.filter(p => !existingAsins.has(p.asin));
+  const completeProducts = newProducts.filter(
+    (p) => Boolean(p.asin && p.title && p.imageUrl && p.productUrl && p.price)
+  );
+
+  if (newProducts.length !== completeProducts.length) {
+    addLog(
+      state,
+      'DISCOVERY_FILTER',
+      `Dropped ${newProducts.length - completeProducts.length} incomplete products for ${category.name}`
+    );
+  }
   
   // Take only what we need
-  const selected = newProducts.slice(0, count);
+  const selected = completeProducts.slice(0, count);
   
   for (const item of selected) {
     const product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'> = {

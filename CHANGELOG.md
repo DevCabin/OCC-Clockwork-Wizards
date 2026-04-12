@@ -23,6 +23,14 @@ All notable changes to the NerdyMugs project will be documented in this file.
   - Added response diagnostics (`attempts`, `rawCount`, `keptCount`).
   - Added ASIN de-duplication and bounded return count.
 
+## [1.0.12] - 2026-04-12
+
+### Changed
+- Hardened frontend/discovery handling for PA-API reliability:
+  - Increased PA-API request `itemCount` and tightened mug-focused query composition.
+  - Added client-side completeness filtering and diagnostics logging in `app/src/lib/amazon.ts`.
+  - Added discovery-level incomplete-product filtering + log signal in `app/src/lib/discovery.ts`.
+
 ## [1.0.0] - 2025-04-10
 
 ### Added
