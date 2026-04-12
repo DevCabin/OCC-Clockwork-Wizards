@@ -39,6 +39,14 @@ All notable changes to the NerdyMugs project will be documented in this file.
   - Scheduled automation still respects quiet days.
   - Added `QUIET_DAY_BYPASS` log entry for traceability.
 
+## [1.0.14] - 2026-04-12
+
+### Changed
+- Added PA-API failure diagnostics in `/api/paapi-search` responses:
+  - Env presence flags for access key / secret / partner tag.
+  - Safe env metadata (access-key prefix, partner-tag suffix, host, region).
+  - Error metadata (`name`, `code`, `statusCode`) for auth/signing triage.
+
 ## [1.0.0] - 2025-04-10
 
 ### Added

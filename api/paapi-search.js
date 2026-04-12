@@ -140,9 +140,33 @@ module.exports = async (req, res) => {
       },
     });
   } catch (err) {
+    const accessKey = process.env.PAAPI_ACCESS_KEY || process.env.PAAPI_AMAZON_ACCESS_KEY;
+    const secretKey = process.env.PAAPI_SECRET_KEY || process.env.PAAPI_AMAZON_SECRET_KEY;
+    const partnerTag = process.env.PAAPI_PARTNER_TAG || process.env.PAAPI_AMAZON_ASSOCIATE_TAG;
+    const host = process.env.PAAPI_HOST || 'webservices.amazon.com';
+    const region = process.env.PAAPI_REGION || 'us-east-1';
+
     return res.status(500).json({
       error: 'PA-API request failed',
       message: err?.message || String(err),
+      diagnostics: {
+        envPresent: {
+          accessKey: Boolean(accessKey),
+          secretKey: Boolean(secretKey),
+          partnerTag: Boolean(partnerTag),
+        },
+        envMeta: {
+          accessKeyPrefix: accessKey ? accessKey.slice(0, 4) : null,
+          partnerTagSuffix: partnerTag ? partnerTag.slice(-3) : null,
+          host,
+          region,
+        },
+        errorMeta: {
+          name: err?.name || null,
+          code: err?.code || null,
+          statusCode: err?.statusCode || null,
+        },
+      },
     });
   }
 };
