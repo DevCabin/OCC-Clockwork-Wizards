@@ -1,117 +1,73 @@
 # NerdyMugs ☕🖖
 
-> Coffee Mugs for Nerds - An automated content discovery and affiliate marketing platform
+Coffee mugs for nerds — content discovery + publishing workflow with Amazon PA-API integration via Vercel serverless functions.
 
-**Live Demo:** https://app-a5qkol043-devcabins-projects.vercel.app
+## Current Status
 
-## Overview
+- Frontend: React + TypeScript + Vite (in `app/`)
+- Backend endpoints: Vercel serverless functions (in `api/`)
+- Product discovery: `/api/paapi-search` (server-side Amazon PA-API)
+- Data persistence: localStorage today, Supabase migration planned
 
-NerdyMugs is a content automation platform that discovers coffee mugs from Amazon, generates engaging posts, and drives affiliate revenue. Originally a WordPress blog, now rebuilt as a modern React SPA with automated product discovery.
+## Repo Layout
 
-## Features
+```
+OCC-Clockwork-Wizards/
+├── api/                    # Vercel serverless API routes
+├── app/                    # Vite React frontend
+├── scripts/                # utility/import scripts
+├── PRE_PRODUCTION_ASSETS/  # source exports/assets
+├── TODO.md                 # active roadmap
+└── CHANGELOG.md            # release/change history
+```
 
-- **Automated Product Discovery** - Uses Amazon Product Advertising API to find trending mugs
-- **AI-Powered Content** - Generates titles, captions, and descriptions for posts
-- **Category Management** - Organized by Star Trek, Star Wars, Marvel, Retro Gaming, and more
-- **WordPress Import** - Migrated 169 historical posts with 301 redirects
-- **Affiliate Integration** - Amazon Associates links with tracking ID
-- **Admin Dashboard** - Manual posting, analytics, and configuration
+## Local Run (for testing)
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 19 + TypeScript |
-| Build Tool | Vite 7 |
-| Styling | Tailwind CSS + shadcn/ui |
-| State | localStorage (client-side) |
-| API | Amazon Product Advertising API |
-| Hosting | Vercel (Hobby tier) |
-
-## Quick Start
-
-### Prerequisites
-- Node.js 18+
-- Amazon Associates account
-- AWS IAM credentials (for PA API)
-
-### Local Development
+From repo root:
 
 ```bash
-cd NerdyMugs-Complete/app
-
-# Install dependencies
 npm install
-
-# Create environment file
-cp .env.example .env
-# Edit .env with your Amazon credentials
-
-# Start dev server
-npm run dev
+cd /Users/georgefeatherstone/DEV/OCC-Clockwork-Wizards/app && npm install
+cd /Users/georgefeatherstone/DEV/OCC-Clockwork-Wizards && npm run dev
 ```
 
-Open http://localhost:5173
+Then open: `http://localhost:5173`
 
-### Environment Variables
+## Environment Variables
+
+### Server-side (Vercel / API)
+
+Use server-only env vars for Amazon PA-API:
 
 ```bash
-VITE_AMAZON_ACCESS_KEY=AKIAXXXXXXXX
-VITE_AMAZON_SECRET_KEY=xxxxxxxxxxxx
-VITE_AMAZON_ASSOCIATE_TAG=georgwebsi-20
+PAAPI_ACCESS_KEY=...
+PAAPI_SECRET_KEY=...
+PAAPI_PARTNER_TAG=georgwebsi-20
+PAAPI_HOST=webservices.amazon.com
+PAAPI_REGION=us-east-1
 ```
 
-## WordPress Import
+Accepted legacy aliases in current API route:
 
-The WordPress export has been processed and saved to `NerdyMugs-Complete/app/imported-posts.json`. To import into the app:
+- `PAAPI_AMAZON_ACCESS_KEY`
+- `PAAPI_AMAZON_SECRET_KEY`
+- `PAAPI_AMAZON_ASSOCIATE_TAG`
 
-1. Open Admin panel in the app
-2. Navigate to WordPress Import section
-3. Select categories to import
-4. Click "Import Selected"
+### Client-side
 
-**Redirects:** Old WordPress URLs automatically redirect to new post URLs via `redirects.json`.
+Only safe/public values should be exposed in `VITE_*` vars (example: associate tag).
 
 ## Deployment
 
-Deployed on Vercel with automatic builds on git push:
+Deploys are handled via GitHub → Vercel. Pushes to `main` trigger production deployment.
 
-```bash
-cd NerdyMugs-Complete/app
-vercel --prod
-```
+## Documentation Index
 
-## Project Structure
-
-```
-NerdyMugs-Complete/
-├── app/                    # Main React application
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── lib/           # Core logic (Amazon API, discovery, etc.)
-│   │   ├── config/        # Site configuration
-│   │   └── types/         # TypeScript types
-│   ├── imported-posts.json # WordPress import data
-│   ├── redirects.json     # 301 redirect mappings
-│   └── vercel.json        # Vercel config
-├── scripts/
-│   └── import-wp.js       # WordPress XML parser
-└── PRE_PRODUCTION_ASSETS/  # Original WordPress export
-```
-
-## Roadmap
-
-- [ ] Supabase migration (replace localStorage)
-- [ ] Automated cron jobs (3 posts/day)
-- [ ] X/Twitter integration
-- [ ] Custom domain (nerdymugs.com)
-- [ ] Analytics dashboard
-- [ ] A/B testing for content
-
-## License
-
-MIT
+- `TODO.md` → active implementation plan and next actions
+- `PRODUCTION_PLAN.md` → high-level architecture roadmap
+- `PLAN_SEARCH_PROXY.md` → historical decision notes for search proxy experiments
+- `NerdyMugs-Companion-Guide.md` → operator guide (updated)
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for detailed history.
+See `CHANGELOG.md` for notable updates.

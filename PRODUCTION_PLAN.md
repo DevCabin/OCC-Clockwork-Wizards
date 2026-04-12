@@ -1,5 +1,9 @@
 # NerdyMugs Production Plan
 
+> **Status: Active roadmap (updated 2026-04-12)**
+>
+> This doc is the high-level target architecture. Current implementation is still Vite + serverless APIs + localStorage, with incremental migration underway.
+
 ## Architecture Overview
 
 ```
@@ -64,16 +68,16 @@
 
 ### Phase 2: Amazon Integration (Week 1-2)
 
-- [ ] **Apply for Amazon Product Advertising API**
+- [x] **Apply for Amazon Product Advertising API**
   - Requires active Amazon Associates account
   - Approval usually takes 1-2 days
   
-- [ ] **Build Amazon API client**
+- [x] **Build Amazon API client**
   - Search products by keywords
   - Fetch product images, prices, descriptions
   - Generate affiliate links with `georgwebsi-20`
   
-- [ ] **Update discovery service**
+- [x] **Update discovery service**
   - Replace simulated products with real Amazon data
   - Cache product data to reduce API calls
 
@@ -258,10 +262,12 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
-# Amazon
-AMAZON_ACCESS_KEY=AKIA...
-AMAZON_SECRET_KEY=...
-AMAZON_ASSOCIATE_TAG=georgwebsi-20
+# Amazon (server-side)
+PAAPI_ACCESS_KEY=AKIA...
+PAAPI_SECRET_KEY=...
+PAAPI_PARTNER_TAG=georgwebsi-20
+PAAPI_HOST=webservices.amazon.com
+PAAPI_REGION=us-east-1
 
 # X/Twitter
 X_API_KEY=...
@@ -359,11 +365,11 @@ The system enforces this via:
 
 ## What I Need From You
 
-To proceed with production:
+To proceed with the next implementation phase:
 
 1. **WordPress export** (`nerdymugs-export.xml`)
-2. **Amazon Associates confirmation** (is `georgwebsi-20` active?)
+2. **PA-API env verification in Vercel** (`PAAPI_*` values are present and valid)
 3. **X API keys** (if you want auto-posting)
-4. **Go/no-go** on the architecture
+4. **Go/no-go** on admin/public split + Supabase migration sequence
 
 Want me to start building the production version?

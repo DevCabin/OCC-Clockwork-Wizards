@@ -2,6 +2,18 @@
 
 All notable changes to the NerdyMugs project will be documented in this file.
 
+## [1.0.10] - 2026-04-12
+
+### Changed
+- Synced local `main` with `origin/main` (fast-forward, 8 commits).
+- Pruned and refreshed root documentation to reflect current implementation:
+  - Updated `README.md` for current repo structure and PA-API server-side env rules.
+  - Reworked `TODO.md` into active priorities and current environment guardrails.
+  - Updated `PRODUCTION_PLAN.md` status and `PAAPI_*` variable naming.
+  - Marked `PLAN_SEARCH_PROXY.md` as archived/superseded context.
+  - Updated `NerdyMugs-Companion-Guide.md` with current status note and env naming fixes.
+- Removed obsolete `CLINE-ONE-SHOT-PROMPT.md`.
+
 ## [1.0.0] - 2025-04-10
 
 ### Added

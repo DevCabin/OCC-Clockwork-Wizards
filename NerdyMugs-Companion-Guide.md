@@ -1,6 +1,10 @@
 # 🖖☕ NerdyMugs Companion Guide
 ## Your Step-by-Step Guide to Running the Ultimate Coffee Mug Content Machine
 
+> **Status Note (2026-04-12):**
+> This guide is mostly legacy onboarding content. Current implementation uses server-side Amazon PA-API via `/api/paapi-search` and `PAAPI_*` environment variables.
+> For current execution priorities, use `TODO.md` and `README.md` first.
+
 *Written for high schoolers, nerds, and anyone who wants to automate their way to affiliate marketing glory*
 
 ---
@@ -325,8 +329,11 @@ To get REAL products with REAL images and REAL affiliate links:
 In your project folder, create a file named `.env`:
 
 ```bash
-VITE_AMAZON_ACCESS_KEY=your-access-key-here
-VITE_AMAZON_SECRET_KEY=your-secret-key-here
+PAAPI_ACCESS_KEY=your-access-key-here
+PAAPI_SECRET_KEY=your-secret-key-here
+PAAPI_PARTNER_TAG=georgwebsi-20
+PAAPI_HOST=webservices.amazon.com
+PAAPI_REGION=us-east-1
 VITE_AMAZON_ASSOCIATE_TAG=georgwebsi-20
 ```
 
@@ -469,9 +476,9 @@ npm install package-name
 
 | Variable | What It Does |
 |----------|--------------|
-| `VITE_AMAZON_ACCESS_KEY` | Your Amazon API access key |
-| `VITE_AMAZON_SECRET_KEY` | Your Amazon API secret key |
-| `VITE_AMAZON_ASSOCIATE_TAG` | Your affiliate tracking code |
+| `PAAPI_ACCESS_KEY` | Server-side Amazon API access key |
+| `PAAPI_SECRET_KEY` | Server-side Amazon API secret key |
+| `PAAPI_PARTNER_TAG` | Amazon associate tag |
 | `VITE_SUPABASE_URL` | Database URL (for production) |
 | `VITE_SUPABASE_ANON_KEY` | Database key (for production) |
 
@@ -522,6 +529,6 @@ You now know everything you need to:
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2024*
+*Document Version: 1.1*
+*Last Updated: 2026-04-12*
 *Built with ❤️ for nerds everywhere*

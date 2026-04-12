@@ -1,5 +1,11 @@
 # Plan: Replace Amazon API with a Search Proxy (No Scraping)
 
+> **Status: Archived (superseded)**
+>
+> This plan documents an interim Brave Search proxy experiment.
+> Current production direction is Amazon PA-API via `/api/paapi-search`.
+> Keep this file for historical context only.
+
 This project currently calls `/api/amazon-search` (Vercel Serverless Function) which depends on Amazon credentials and frequently fails locally (Vite dev server does not serve Vercel functions).
 
 This plan replaces the Amazon dependency with a simple, reliable search proxy endpoint using a 3rd-party search API (recommended: Brave Search API). It avoids scraping Amazon, reduces brittleness, and keeps local dev + Vercel deploy consistent.
