@@ -14,6 +14,15 @@ All notable changes to the NerdyMugs project will be documented in this file.
   - Updated `NerdyMugs-Companion-Guide.md` with current status note and env naming fixes.
 - Removed obsolete `CLINE-ONE-SHOT-PROMPT.md`.
 
+## [1.0.11] - 2026-04-12
+
+### Changed
+- Hardened `/api/paapi-search` result reliability:
+  - Added completeness filtering (require ASIN, title, image, price, URL).
+  - Added keyword retry strategy (`query` → `query mug` → `query coffee mug`).
+  - Added response diagnostics (`attempts`, `rawCount`, `keptCount`).
+  - Added ASIN de-duplication and bounded return count.
+
 ## [1.0.0] - 2025-04-10
 
 ### Added
