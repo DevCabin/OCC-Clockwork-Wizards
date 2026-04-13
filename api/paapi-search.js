@@ -96,7 +96,8 @@ module.exports = async (req, res) => {
     const apiClient = new sdk.ApiClient();
     apiClient.setCredentialId(credentialId);
     apiClient.setCredentialSecret(credentialSecret);
-    apiClient.credentialVersion = '3.1'; // NA marketplace
+    const version = (process.env.AMAZON_CREDENTIAL_VERSION || '3.1').trim();
+    apiClient.setVersion(version);
 
     const api = new sdk.DefaultApi(apiClient);
     const marketplace = 'www.amazon.com';
