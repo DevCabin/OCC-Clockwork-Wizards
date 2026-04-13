@@ -160,9 +160,27 @@ module.exports = async (req, res) => {
       ''
     ).trim();
 
+    // Extract real error message from SDK error objects
+    let message = '';
+    let responseBody = null;
+    if (err && typeof err === 'object' && err.message) {
+      message = err.message;
+    } else if (err && typeof err === 'object') {
+      try { message = JSON.stringify(err); } catch { message = String(err); }
+    } else {
+      message = String(err);
+    }
+    // SDK may attach response body
+    if (err?.response?.body) {
+      try { responseBody = typeof err.response.body === 'string' ? JSON.parse(err.response.body) : err.response.body; } catch { responseBody = err.response.body; }
+    } else if (err?.body) {
+      try { responseBody = typeof err.body === 'string' ? JSON.parse(err.body) : err.body; } catch { responseBody = err.body; }
+    }
+
     return res.status(500).json({
       error: 'Creators API request failed',
-      message: err?.message || String(err),
+      message,
+      responseBody,
       diagnostics: {
         envPresent: {
           credentialId: Boolean(credentialId),
