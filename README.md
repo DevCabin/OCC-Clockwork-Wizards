@@ -1,179 +1,110 @@
-# OCC Clockwork Wizards — Minimal V1 Product + Post Pipeline
+# OCC Clockwork Wizards — V1 API Pipeline
 
-This is a scrappy, minimal V1 that runs daily product discovery and post generation pipelines, then exposes JSON endpoints.
+**Live base URL:** `https://app-liart-five-43.vercel.app`  
+**GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`  
+**Stack:** Next.js 14 (App Router) · TypeScript · Supabase · Firecrawl · OpenAI · Vercel
 
-## What it does
+---
 
-Once per day:
-1. Generates simple product discovery candidates
-2. Extracts product-like data with Firecrawl
-3. Scores relevance with OpenAI
-4. Stores top 3 products in Supabase
-5. Generates short markdown product spotlight posts with OpenAI
-6. Stores generated posts in Supabase
-7. Serves latest/recent products and recent posts via API
+## What This Repo Is
 
-## Stack
+This is the **backend data pipeline only**. It:
 
-- Next.js (App Router)
-- TypeScript
-- Supabase (Postgres)
-- Firecrawl API
-- OpenAI API
-- Vercel cron
+1. Discovers products from Amazon/Etsy via Firecrawl
+2. Scores them for relevance using OpenAI
+3. Stores the top 3 per day in Supabase
+4. Generates AI-written markdown posts for each product
+5. Exposes everything via open JSON API endpoints
 
-## Environment variables
+**No frontend lives here.** The NerdyMugs Vite/React frontend is in a separate repo and consumes these endpoints.
 
-Copy `.env.example` to `.env.local` and fill all values:
+---
 
-```bash
-cp .env.example .env.local
+## API Endpoints
+
+All endpoints live at `https://app-liart-five-43.vercel.app`.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/products/latest` | None | Latest products (default 3) |
+| `GET` | `/api/products/recent` | None | Recent products (default 21) |
+| `GET` | `/api/posts/recent` | None | AI-generated posts (default 21) |
+| `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
+| `POST` | `/api/jobs/daily-posts` | Bearer token | Trigger post generation |
+
+Query param: `?limit=N` (max 100) on all GET endpoints.
+
+See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation including response shapes, database schema, and integration code examples.
+
+---
+
+## Repo Layout
+
+```
+/
+├── app/
+│   ├── api/jobs/daily-products/    # Product discovery + scoring job
+│   ├── api/jobs/daily-posts/       # Post generation job
+│   ├── api/products/latest/        # GET latest products
+│   ├── api/products/recent/        # GET recent products
+│   ├── api/posts/recent/           # GET recent posts
+│   ├── layout.tsx
+│   └── page.tsx                    # Minimal API index page
+├── lib/
+│   ├── firecrawl.ts                # Firecrawl scrape + extract
+│   ├── openai.ts                   # Scoring + post generation
+│   ├── products.ts                 # RULE config + discovery logic
+│   ├── supabase.ts                 # Supabase client
+│   └── types.ts                    # Zod schemas + TypeScript types
+├── supabase/migrations/            # DB schema SQL
+├── V1_ARCHITECTURE.md              # Full architecture + integration guide
+├── CHANGELOG.md
+└── vercel.json                     # Cron schedule
 ```
 
-Required:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `FIRECRAWL_API_KEY`
-- `OPENAI_API_KEY`
-- `CRON_SECRET`
+---
 
-## Supabase setup
+## Environment Variables
 
-Run these migration SQL files in your Supabase SQL editor:
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only) |
+| `FIRECRAWL_API_KEY` | Firecrawl API key |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `CRON_SECRET` | Bearer token for job endpoints |
 
-`supabase/migrations/20260413103100_create_products.sql`
-`supabase/migrations/20260413120000_create_posts.sql`
+---
 
-It creates two tables:
-- `products`
-- `posts`
-
-With:
-- unique `(product_url, run_date)`
-- index on `run_date desc`
-
-`posts` includes:
-- foreign key to `products.id`
-- unique `product_id` (one post per product in this V1)
-- unique `slug`
-- indexes on `run_date desc` and `created_at desc`
-
-## Local development
-
-Install + run:
-
-```bash
-npm install
-npm run dev
-```
-
-## API endpoints
-
-### POST `/api/jobs/daily-products`
-
-Runs the daily ingestion/scoring pipeline.
-
-Requires header:
-
-`Authorization: Bearer <CRON_SECRET>`
-
-Example:
-
-```bash
-curl -X POST http://localhost:3000/api/jobs/daily-products \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-```
-
-Response shape:
+## Cron Schedule
 
 ```json
-{
-  "success": true,
-  "runDate": "YYYY-MM-DD",
-  "candidatesTried": 8,
-  "productsStored": 3,
-  "errors": []
-}
+{ "path": "/api/jobs/daily-products", "schedule": "0 13 * * *"  }
+{ "path": "/api/jobs/daily-posts",    "schedule": "15 13 * * *" }
 ```
 
-### GET `/api/products/latest`
+---
 
-Default limit is 3.
-
-Examples:
+## Manual Test
 
 ```bash
-curl "http://localhost:3000/api/products/latest"
-curl "http://localhost:3000/api/products/latest?limit=3"
+CRON_SECRET=$(grep '^CRON_SECRET=' .env | cut -d '=' -f2-)
+
+curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/daily-products" \
+  -H "Authorization: Bearer $CRON_SECRET"
+
+curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/daily-posts" \
+  -H "Authorization: Bearer $CRON_SECRET"
+
+curl -sS "https://app-liart-five-43.vercel.app/api/products/latest?limit=3"
+curl -sS "https://app-liart-five-43.vercel.app/api/posts/recent?limit=3"
 ```
 
-### GET `/api/products/recent`
+---
 
-Default limit is 21.
+## Documentation
 
-Examples:
-
-```bash
-curl "http://localhost:3000/api/products/recent"
-curl "http://localhost:3000/api/products/recent?limit=21"
-```
-
-### POST `/api/jobs/daily-posts`
-
-Runs post generation for products that do not already have posts.
-
-Requires header:
-
-`Authorization: Bearer <CRON_SECRET>`
-
-Example:
-
-```bash
-curl -X POST http://localhost:3000/api/jobs/daily-posts \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-```
-
-Response shape:
-
-```json
-{
-  "success": true,
-  "runDate": "YYYY-MM-DD",
-  "productsChecked": 25,
-  "postsAttempted": 3,
-  "postsStored": 3,
-  "errors": []
-}
-```
-
-### GET `/api/posts/recent`
-
-Default limit is 21.
-
-Examples:
-
-```bash
-curl "http://localhost:3000/api/posts/recent"
-curl "http://localhost:3000/api/posts/recent?limit=21"
-```
-
-## Vercel deployment + cron
-
-`vercel.json` includes daily crons for:
-- `/api/jobs/daily-products` (13:00 UTC)
-- `/api/jobs/daily-posts` (13:15 UTC)
-
-Set all env vars in Vercel Project Settings. Include `CRON_SECRET`.
-
-Vercel cron will call:
-- `POST /api/jobs/daily-products`
-- `POST /api/jobs/daily-posts`
-
-Your route checks for:
-- `Authorization: Bearer <CRON_SECRET>`
-
-## Notes
-
-- This is intentionally minimal (no UI, no admin, no multi-rule engine).
-- Failed extraction/scoring items are skipped; the job returns a summary instead of crashing.
+- [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) — full pipeline, schema, API reference, integration guide
+- [`CHANGELOG.md`](./CHANGELOG.md) — change history
+- [`RESET_STRATEGY.md`](./RESET_STRATEGY.md) — recovery notes
