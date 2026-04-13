@@ -47,6 +47,16 @@ All notable changes to the NerdyMugs project will be documented in this file.
   - Safe env metadata (access-key prefix, partner-tag suffix, host, region).
   - Error metadata (`name`, `code`, `statusCode`) for auth/signing triage.
 
+## [1.0.15] - 2026-04-12
+
+### Changed
+- **Migrated `/api/paapi-search` from old PA-API v5 (`amazon-paapi`) to Creators API SDK (`creatorsapi-nodejs-sdk`).**
+  - Uses OAuth2 credential flow instead of AWS IAM Signature V4.
+  - New env vars: `CREATORS_CREDENTIAL_ID`, `CREATORS_CREDENTIAL_SECRET`.
+  - Retains `PAAPI_PARTNER_TAG` / `PAAPI_AMAZON_ASSOCIATE_TAG` for partner tag.
+  - Response shape unchanged for frontend compatibility.
+  - All env values `.trim()`'d to prevent whitespace auth failures.
+
 ## [1.0.0] - 2025-04-10
 
 ### Added

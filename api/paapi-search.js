@@ -1,42 +1,42 @@
-// Vercel Serverless Function - Amazon Product Advertising API (PA-API) Search Proxy
+// Vercel Serverless Function - Amazon Creators API Search Proxy
 // POST /api/paapi-search
 // Body: { keywords: string[] | string, searchIndex?: string, itemCount?: number }
 // Env:
-//   PAAPI_ACCESS_KEY
-//   PAAPI_SECRET_KEY
-//   PAAPI_PARTNER_TAG
-//   PAAPI_HOST (default webservices.amazon.com)
-//   PAAPI_REGION (default us-east-1)
+//   CREATORS_CREDENTIAL_ID   (from Amazon Associates → Creators API → credential)
+//   CREATORS_CREDENTIAL_SECRET
+//   PAAPI_PARTNER_TAG  (or PAAPI_AMAZON_ASSOCIATE_TAG)
 
-const paapi = require('amazon-paapi');
+const sdk = require('creatorsapi-nodejs-sdk');
 
 function normalizeProducts(items = []) {
   const mapped = items.map((item) => {
-    const asin = item?.ASIN || '';
-    const title = item?.ItemInfo?.Title?.DisplayValue || '';
-    const imageUrl = item?.Images?.Primary?.Large?.URL || '';
-    const price = item?.Offers?.Listings?.[0]?.Price?.DisplayAmount || '';
-    const features = item?.ItemInfo?.Features?.DisplayValues || [];
-    const productUrl = item?.DetailPageURL || (asin ? `https://www.amazon.com/dp/${asin}` : '');
+    const asin = item.asin || '';
+    const title = item.itemInfo?.title?.displayValue || '';
+    const imageUrl =
+      item.images?.primary?.large?.url ||
+      item.images?.primary?.medium?.url ||
+      '';
+    const price =
+      item.offersV2?.listings?.[0]?.price?.money?.displayAmount || '';
+    const features = item.itemInfo?.features?.displayValues || [];
+    const productUrl =
+      item.detailPageURL ||
+      (asin ? `https://www.amazon.com/dp/${asin}` : '');
 
-    return {
-      asin,
-      title,
-      imageUrl,
-      productUrl,
-      price,
-      features,
-    };
+    return { asin, title, imageUrl, productUrl, price, features };
   });
 
   // Reliability gate: keep only complete product cards.
-  return mapped.filter((p) => p.asin && p.title && p.imageUrl && p.price && p.productUrl);
+  return mapped.filter(
+    (p) => p.asin && p.title && p.imageUrl && p.price && p.productUrl
+  );
 }
 
 function buildKeywordAttempts(keywords) {
   const attempts = [keywords.trim()];
   if (!/\bmug\b/i.test(keywords)) attempts.push(`${keywords} mug`);
-  if (!/\bcoffee mug\b/i.test(keywords)) attempts.push(`${keywords} coffee mug`);
+  if (!/\bcoffee mug\b/i.test(keywords))
+    attempts.push(`${keywords} coffee mug`);
   return [...new Set(attempts.map((k) => k.trim()).filter(Boolean))];
 }
 
@@ -48,24 +48,28 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST')
+    return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    // Support both naming conventions:
-    // - Preferred: PAAPI_ACCESS_KEY / PAAPI_SECRET_KEY / PAAPI_PARTNER_TAG
-    // - Legacy/mobile-set: PAAPI_AMAZON_ACCESS_KEY / PAAPI_AMAZON_SECRET_KEY / PAAPI_AMAZON_ASSOCIATE_TAG
-    const accessKey = process.env.PAAPI_ACCESS_KEY || process.env.PAAPI_AMAZON_ACCESS_KEY;
-    const secretKey = process.env.PAAPI_SECRET_KEY || process.env.PAAPI_AMAZON_SECRET_KEY;
-    const partnerTag = process.env.PAAPI_PARTNER_TAG || process.env.PAAPI_AMAZON_ASSOCIATE_TAG;
-    const host = process.env.PAAPI_HOST || 'webservices.amazon.com';
-    const region = process.env.PAAPI_REGION || 'us-east-1';
+    const credentialId = (
+      process.env.CREATORS_CREDENTIAL_ID || ''
+    ).trim();
+    const credentialSecret = (
+      process.env.CREATORS_CREDENTIAL_SECRET || ''
+    ).trim();
+    const partnerTag = (
+      process.env.PAAPI_PARTNER_TAG ||
+      process.env.PAAPI_AMAZON_ASSOCIATE_TAG ||
+      ''
+    ).trim();
 
-    if (!accessKey || !secretKey || !partnerTag) {
+    if (!credentialId || !credentialSecret || !partnerTag) {
       return res.status(500).json({
-        error: 'PA-API env vars not configured',
+        error: 'Creators API env vars not configured',
         missing: {
-          PAAPI_ACCESS_KEY: !accessKey,
-          PAAPI_SECRET_KEY: !secretKey,
+          CREATORS_CREDENTIAL_ID: !credentialId,
+          CREATORS_CREDENTIAL_SECRET: !credentialSecret,
           PAAPI_PARTNER_TAG: !partnerTag,
         },
       });
@@ -75,24 +79,27 @@ module.exports = async (req, res) => {
     const keywordsRaw = body.keywords;
     const keywords = Array.isArray(keywordsRaw)
       ? keywordsRaw.filter(Boolean).join(' ')
-      : (typeof keywordsRaw === 'string' ? keywordsRaw : '');
+      : typeof keywordsRaw === 'string'
+        ? keywordsRaw
+        : '';
 
     if (!keywords.trim()) {
-      return res.status(400).json({ error: 'keywords is required (string or string[])' });
+      return res
+        .status(400)
+        .json({ error: 'keywords is required (string or string[])' });
     }
 
     const searchIndex = body.searchIndex || 'All';
     const itemCount = Math.max(3, Math.min(10, Number(body.itemCount) || 8));
 
-    const commonParameters = {
-      AccessKey: accessKey,
-      SecretKey: secretKey,
-      PartnerTag: partnerTag,
-      PartnerType: 'Associates',
-      Marketplace: 'www.amazon.com',
-      Host: host,
-      Region: region,
-    };
+    // Configure Creators API client
+    const apiClient = new sdk.ApiClient();
+    apiClient.setCredentialId(credentialId);
+    apiClient.setCredentialSecret(credentialSecret);
+    apiClient.credentialVersion = '3.1'; // NA marketplace
+
+    const api = new sdk.DefaultApi(apiClient);
+    const marketplace = 'www.amazon.com';
 
     const keywordAttempts = buildKeywordAttempts(keywords);
     let rawCount = 0;
@@ -100,20 +107,22 @@ module.exports = async (req, res) => {
     let attemptsUsed = [];
 
     for (const keywordAttempt of keywordAttempts) {
-      const requestParameters = {
-        Keywords: keywordAttempt,
-        SearchIndex: searchIndex,
-        ItemCount: itemCount,
-        Resources: [
-          'Images.Primary.Large',
-          'ItemInfo.Title',
-          'Offers.Listings.Price',
-          'ItemInfo.Features',
-        ],
-      };
+      const searchRequest = new sdk.SearchItemsRequestContent();
+      searchRequest.keywords = keywordAttempt;
+      searchRequest.searchIndex = searchIndex;
+      searchRequest.itemCount = itemCount;
+      searchRequest.partnerTag = partnerTag;
+      searchRequest.resources = [
+        'images.primary.large',
+        'itemInfo.title',
+        'itemInfo.features',
+      ];
 
-      const data = await paapi.SearchItems(commonParameters, requestParameters);
-      const items = data?.SearchResult?.Items || [];
+      const data = await api.searchItems(marketplace, {
+        searchItemsRequestContent: searchRequest,
+      });
+
+      const items = data?.searchResult?.items || [];
       rawCount += items.length;
       attemptsUsed.push(keywordAttempt);
 
@@ -125,11 +134,13 @@ module.exports = async (req, res) => {
 
     // De-dupe by ASIN and return requested count.
     const seen = new Set();
-    const unique = products.filter((p) => {
-      if (seen.has(p.asin)) return false;
-      seen.add(p.asin);
-      return true;
-    }).slice(0, itemCount);
+    const unique = products
+      .filter((p) => {
+        if (seen.has(p.asin)) return false;
+        seen.add(p.asin);
+        return true;
+      })
+      .slice(0, itemCount);
 
     return res.status(200).json({
       products: unique,
@@ -140,31 +151,31 @@ module.exports = async (req, res) => {
       },
     });
   } catch (err) {
-    const accessKey = process.env.PAAPI_ACCESS_KEY || process.env.PAAPI_AMAZON_ACCESS_KEY;
-    const secretKey = process.env.PAAPI_SECRET_KEY || process.env.PAAPI_AMAZON_SECRET_KEY;
-    const partnerTag = process.env.PAAPI_PARTNER_TAG || process.env.PAAPI_AMAZON_ASSOCIATE_TAG;
-    const host = process.env.PAAPI_HOST || 'webservices.amazon.com';
-    const region = process.env.PAAPI_REGION || 'us-east-1';
+    const credentialId = (process.env.CREATORS_CREDENTIAL_ID || '').trim();
+    const credentialSecret = (process.env.CREATORS_CREDENTIAL_SECRET || '').trim();
+    const partnerTag = (
+      process.env.PAAPI_PARTNER_TAG ||
+      process.env.PAAPI_AMAZON_ASSOCIATE_TAG ||
+      ''
+    ).trim();
 
     return res.status(500).json({
-      error: 'PA-API request failed',
+      error: 'Creators API request failed',
       message: err?.message || String(err),
       diagnostics: {
         envPresent: {
-          accessKey: Boolean(accessKey),
-          secretKey: Boolean(secretKey),
+          credentialId: Boolean(credentialId),
+          credentialSecret: Boolean(credentialSecret),
           partnerTag: Boolean(partnerTag),
         },
         envMeta: {
-          accessKeyPrefix: accessKey ? accessKey.slice(0, 4) : null,
-          partnerTagSuffix: partnerTag ? partnerTag.slice(-3) : null,
-          host,
-          region,
+          credentialIdPrefix: credentialId ? credentialId.slice(0, 20) : null,
+          partnerTag: partnerTag || null,
         },
         errorMeta: {
           name: err?.name || null,
           code: err?.code || null,
-          statusCode: err?.statusCode || null,
+          statusCode: err?.statusCode || err?.status || null,
         },
       },
     });
