@@ -1,7 +1,12 @@
 {
-  "version": 2,
-  "installCommand": "npm install && cd app && npm install",
-  "buildCommand": "cd app && npm run build",
-  "outputDirectory": "app/dist",
-  "framework": "vite"
+  "crons": [
+    {
+      "path": "/api/jobs/daily-products",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/jobs/daily-posts",
+      "schedule": "15 13 * * *"
+    }
+  ]
 }

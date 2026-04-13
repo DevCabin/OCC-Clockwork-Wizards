@@ -1,73 +1,179 @@
-# NerdyMugs ☕🖖
+# OCC Clockwork Wizards — Minimal V1 Product + Post Pipeline
 
-Coffee mugs for nerds — content discovery + publishing workflow with Amazon PA-API integration via Vercel serverless functions.
+This is a scrappy, minimal V1 that runs daily product discovery and post generation pipelines, then exposes JSON endpoints.
 
-## Current Status
+## What it does
 
-- Frontend: React + TypeScript + Vite (in `app/`)
-- Backend endpoints: Vercel serverless functions (in `api/`)
-- Product discovery: `/api/paapi-search` (server-side Amazon PA-API)
-- Data persistence: localStorage today, Supabase migration planned
+Once per day:
+1. Generates simple product discovery candidates
+2. Extracts product-like data with Firecrawl
+3. Scores relevance with OpenAI
+4. Stores top 3 products in Supabase
+5. Generates short markdown product spotlight posts with OpenAI
+6. Stores generated posts in Supabase
+7. Serves latest/recent products and recent posts via API
 
-## Repo Layout
+## Stack
 
+- Next.js (App Router)
+- TypeScript
+- Supabase (Postgres)
+- Firecrawl API
+- OpenAI API
+- Vercel cron
+
+## Environment variables
+
+Copy `.env.example` to `.env.local` and fill all values:
+
+```bash
+cp .env.example .env.local
 ```
-OCC-Clockwork-Wizards/
-├── api/                    # Vercel serverless API routes
-├── app/                    # Vite React frontend
-├── scripts/                # utility/import scripts
-├── PRE_PRODUCTION_ASSETS/  # source exports/assets
-├── TODO.md                 # active roadmap
-└── CHANGELOG.md            # release/change history
-```
 
-## Local Run (for testing)
+Required:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `FIRECRAWL_API_KEY`
+- `OPENAI_API_KEY`
+- `CRON_SECRET`
 
-From repo root:
+## Supabase setup
+
+Run these migration SQL files in your Supabase SQL editor:
+
+`supabase/migrations/20260413103100_create_products.sql`
+`supabase/migrations/20260413120000_create_posts.sql`
+
+It creates two tables:
+- `products`
+- `posts`
+
+With:
+- unique `(product_url, run_date)`
+- index on `run_date desc`
+
+`posts` includes:
+- foreign key to `products.id`
+- unique `product_id` (one post per product in this V1)
+- unique `slug`
+- indexes on `run_date desc` and `created_at desc`
+
+## Local development
+
+Install + run:
 
 ```bash
 npm install
-cd /Users/georgefeatherstone/DEV/OCC-Clockwork-Wizards/app && npm install
-cd /Users/georgefeatherstone/DEV/OCC-Clockwork-Wizards && npm run dev
+npm run dev
 ```
 
-Then open: `http://localhost:5173`
+## API endpoints
 
-## Environment Variables
+### POST `/api/jobs/daily-products`
 
-### Server-side (Vercel / API)
+Runs the daily ingestion/scoring pipeline.
 
-Use server-only env vars for Amazon PA-API:
+Requires header:
+
+`Authorization: Bearer <CRON_SECRET>`
+
+Example:
 
 ```bash
-PAAPI_ACCESS_KEY=...
-PAAPI_SECRET_KEY=...
-PAAPI_PARTNER_TAG=georgwebsi-20
-PAAPI_HOST=webservices.amazon.com
-PAAPI_REGION=us-east-1
+curl -X POST http://localhost:3000/api/jobs/daily-products \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
 ```
 
-Accepted legacy aliases in current API route:
+Response shape:
 
-- `PAAPI_AMAZON_ACCESS_KEY`
-- `PAAPI_AMAZON_SECRET_KEY`
-- `PAAPI_AMAZON_ASSOCIATE_TAG`
+```json
+{
+  "success": true,
+  "runDate": "YYYY-MM-DD",
+  "candidatesTried": 8,
+  "productsStored": 3,
+  "errors": []
+}
+```
 
-### Client-side
+### GET `/api/products/latest`
 
-Only safe/public values should be exposed in `VITE_*` vars (example: associate tag).
+Default limit is 3.
 
-## Deployment
+Examples:
 
-Deploys are handled via GitHub → Vercel. Pushes to `main` trigger production deployment.
+```bash
+curl "http://localhost:3000/api/products/latest"
+curl "http://localhost:3000/api/products/latest?limit=3"
+```
 
-## Documentation Index
+### GET `/api/products/recent`
 
-- `TODO.md` → active implementation plan and next actions
-- `PRODUCTION_PLAN.md` → high-level architecture roadmap
-- `PLAN_SEARCH_PROXY.md` → historical decision notes for search proxy experiments
-- `NerdyMugs-Companion-Guide.md` → operator guide (updated)
+Default limit is 21.
 
-## Changelog
+Examples:
 
-See `CHANGELOG.md` for notable updates.
+```bash
+curl "http://localhost:3000/api/products/recent"
+curl "http://localhost:3000/api/products/recent?limit=21"
+```
+
+### POST `/api/jobs/daily-posts`
+
+Runs post generation for products that do not already have posts.
+
+Requires header:
+
+`Authorization: Bearer <CRON_SECRET>`
+
+Example:
+
+```bash
+curl -X POST http://localhost:3000/api/jobs/daily-posts \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+```
+
+Response shape:
+
+```json
+{
+  "success": true,
+  "runDate": "YYYY-MM-DD",
+  "productsChecked": 25,
+  "postsAttempted": 3,
+  "postsStored": 3,
+  "errors": []
+}
+```
+
+### GET `/api/posts/recent`
+
+Default limit is 21.
+
+Examples:
+
+```bash
+curl "http://localhost:3000/api/posts/recent"
+curl "http://localhost:3000/api/posts/recent?limit=21"
+```
+
+## Vercel deployment + cron
+
+`vercel.json` includes daily crons for:
+- `/api/jobs/daily-products` (13:00 UTC)
+- `/api/jobs/daily-posts` (13:15 UTC)
+
+Set all env vars in Vercel Project Settings. Include `CRON_SECRET`.
+
+Vercel cron will call:
+- `POST /api/jobs/daily-products`
+- `POST /api/jobs/daily-posts`
+
+Your route checks for:
+- `Authorization: Bearer <CRON_SECRET>`
+
+## Notes
+
+- This is intentionally minimal (no UI, no admin, no multi-rule engine).
+- Failed extraction/scoring items are skipped; the job returns a summary instead of crashing.
