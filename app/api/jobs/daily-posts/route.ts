@@ -5,6 +5,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // seconds — requires Vercel Pro or higher
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;

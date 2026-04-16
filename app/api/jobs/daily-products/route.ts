@@ -6,6 +6,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300; // seconds — requires Vercel Pro or higher
 
 type StoredProduct = Product & {
   score: number;
