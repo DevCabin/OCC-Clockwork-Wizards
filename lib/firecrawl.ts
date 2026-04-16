@@ -1,4 +1,5 @@
 import { normalizeProduct } from "./products";
+import { extractProductsFromMarkdown } from "./openai";
 import type { Product } from "./types";
 
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev/v1/scrape";
@@ -15,8 +16,11 @@ export async function extractProductsFromUrl(url: string): Promise<Product[]> {
     },
     body: JSON.stringify({
       url,
-      formats: ["extract"],
+      // Request both so we can fall back to markdown if extract returns nothing
+      formats: ["markdown", "extract"],
       extract: {
+        prompt:
+          "Extract all product listings from this page. For each product get: title (product name), product_url (full URL to the product page), price (numeric price or null), currency (e.g. USD or null), description (brief description or null), image_url (product image URL or null), source_domain (e.g. amazon.com or etsy.com).",
         schema: {
           type: "object",
           properties: {
@@ -26,7 +30,7 @@ export async function extractProductsFromUrl(url: string): Promise<Product[]> {
                 type: "object",
                 properties: {
                   title: { type: "string" },
-                  description: { type: "string" },
+                  description: { type: ["string", "null"] },
                   image_url: { type: ["string", "null"] },
                   price: { type: ["number", "null"] },
                   currency: { type: ["string", "null"] },
@@ -48,14 +52,23 @@ export async function extractProductsFromUrl(url: string): Promise<Product[]> {
   }
 
   const json = await response.json();
-  const extracted = json?.data?.extract?.products;
-  if (!Array.isArray(extracted)) return [];
 
-  const normalized: Product[] = [];
-  for (const item of extracted) {
-    const product = normalizeProduct(item);
-    if (product) normalized.push(product);
+  // Primary path: use Firecrawl's built-in LLM extract if it returned products
+  const extracted = json?.data?.extract?.products;
+  if (Array.isArray(extracted) && extracted.length > 0) {
+    const normalized: Product[] = [];
+    for (const item of extracted) {
+      const product = normalizeProduct(item);
+      if (product) normalized.push(product);
+    }
+    return normalized;
   }
 
-  return normalized;
+  // Fallback path: Firecrawl extract returned nothing — parse markdown with OpenAI instead
+  const markdown = json?.data?.markdown;
+  if (typeof markdown === "string" && markdown.length > 0) {
+    return extractProductsFromMarkdown(markdown);
+  }
+
+  return [];
 }
