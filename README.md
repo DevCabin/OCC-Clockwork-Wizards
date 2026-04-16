@@ -86,6 +86,19 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 
 ---
 
+## Quick Test Links (browser-ready)
+
+| Endpoint | Link |
+|---|---|
+| Latest products (3) | [/api/products/latest](https://app-liart-five-43.vercel.app/api/products/latest) |
+| Recent products (21) | [/api/products/recent](https://app-liart-five-43.vercel.app/api/products/recent) |
+| Recent posts (21) | [/api/posts/recent](https://app-liart-five-43.vercel.app/api/posts/recent) |
+| Latest products — 10 | [/api/products/latest?limit=10](https://app-liart-five-43.vercel.app/api/products/latest?limit=10) |
+| Recent posts — 5 | [/api/posts/recent?limit=5](https://app-liart-five-43.vercel.app/api/posts/recent?limit=5) |
+| API index | [/](https://app-liart-five-43.vercel.app) |
+
+---
+
 ## Manual Test
 
 ```bash
