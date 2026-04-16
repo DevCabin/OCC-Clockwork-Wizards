@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-16
+
+- Converted product discovery rule from `retro-sci-fi-shirts` to `nerdy-mugs` (mugs/coffee cups on Amazon + Etsy).
+- Updated discovery keywords: `funny mug`, `nerdy mug`, `geek coffee mug`, `sci fi mug`, `programmer mug`, `funny coffee cup`.
+- Removed shirt-specific assumptions from `lib/openai.ts` scoring and post generation prompts.
+- Increased `dailyCount` from 3 to 10 — pipeline now stores top 10 products per daily run.
+- Added `RuleConfig` TypeScript interface to `lib/products.ts` — rule config is now clearly typed and commented for easy editing.
+- Added `GET /api/products/trending` endpoint — returns products from the last 7 days, sorted by recency. TODO: re-sort by persisted relevance score once `score` column is added to the `products` table.
+
 ## 2026-04-13 (session 3)
 
 - Rewired Vite frontend to consume V1 API instead of broken Amazon PA-API. Frontend moved to its own standalone repo/Vercel project.

@@ -1,13 +1,34 @@
 import { productSchema, type Product } from "./types";
 
-export const RULE = {
-  name: "retro-sci-fi-shirts",
-  keywords: ["alien", "ufo", "spaceship", "galactic"],
-  excludeKeywords: ["mug", "poster", "sticker", "download"],
+// ─── Rule Configuration ───────────────────────────────────────────────────────
+// Edit this object to change what products the pipeline discovers and stores.
+// One rule is active at a time. Fields marked "✏ editable" are intended for
+// routine tuning without touching pipeline logic.
+export interface RuleConfig {
+  name: string;            // ✏ identifier stored on every product/post row
+  keywords: string[];      // ✏ search terms used to build candidate URLs
+  excludeKeywords: string[]; // ✏ products matching any of these are rejected
+  allowedDomains: string[]; // ✏ only products from these domains are accepted
+  priceMin: number;        // ✏ scoring guidance for OpenAI (lower bound)
+  priceMax: number;        // ✏ scoring guidance for OpenAI (upper bound)
+  dailyCount: number;      // ✏ how many top products to store per daily run
+}
+
+export const RULE: RuleConfig = {
+  name: "nerdy-mugs",
+  keywords: [
+    "funny mug",
+    "nerdy mug",
+    "geek coffee mug",
+    "sci fi mug",
+    "programmer mug",
+    "funny coffee cup",
+  ],
+  excludeKeywords: ["poster", "sticker", "download"],
   allowedDomains: ["amazon.com", "etsy.com"],
-  priceMin: 15,
-  priceMax: 35,
-  dailyCount: 3,
+  priceMin: 10,
+  priceMax: 30,
+  dailyCount: 10,
 };
 
 export function getRunDateISO(): string {
@@ -15,7 +36,7 @@ export function getRunDateISO(): string {
 }
 
 export function generateCandidateUrls(): string[] {
-  const phrases = RULE.keywords.map((keyword) => `retro sci fi shirt ${keyword}`);
+  const phrases = RULE.keywords.map((keyword) => `${keyword}`);
   const urls = new Set<string>();
 
   for (const phrase of phrases) {

@@ -13,7 +13,7 @@ export async function scoreProductWithOpenAI(product: Product): Promise<{ score:
     "Product:",
     JSON.stringify(product),
     "Return ONLY strict JSON with keys score (0-100 number) and isRelevant (boolean).",
-    "Reject if excluded keywords present or product not likely a shirt.",
+    "Reject if excluded keywords present or product not likely a mug or coffee cup.",
     "Favor keyword match and price inside range.",
   ].join("\n");
 
@@ -66,7 +66,7 @@ export async function generatePostForProduct(product: Product): Promise<Generate
 
   const prompt = [
     "You are writing a short affiliate-style product spotlight in markdown.",
-    "Write for a fan of retro sci-fi shirts.",
+    "Write for a fan of nerdy, geeky, or funny mugs and coffee cups.",
     "Product:",
     JSON.stringify(product),
     "Return ONLY strict JSON with keys:",
