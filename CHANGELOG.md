@@ -11,6 +11,7 @@
 - Fixed Firecrawl extraction: Firecrawl's built-in LLM `extract` was silently failing on Amazon search pages. Added dual-format request (`markdown` + `extract`) with OpenAI markdown parsing fallback in `lib/firecrawl.ts`. Added `extractProductsFromMarkdown()` to `lib/openai.ts`.
 - Added `export const maxDuration = 300` to both job routes (`daily-products`, `daily-posts`) to explicitly declare 300s Vercel function timeout (requires Pro plan).
 - Cleared old `retro-sci-fi-shirts` data from Supabase and ran a full end-to-end test: 2 mug products discovered and stored, 2 AI posts generated. Pipeline confirmed working for `nerdy-mugs` rule.
+- Fixed Next.js fetch cache stale data bug: `lib/supabase.ts` now passes `cache: "no-store"` to the global fetch override in the Supabase client, preventing Next.js from serving cached Supabase query responses across requests. All endpoints (`/api/products/latest`, `/api/products/recent`, `/api/products/trending`, `/api/posts/recent`) now return live data on every request.
 
 ## 2026-04-13 (session 3)
 
