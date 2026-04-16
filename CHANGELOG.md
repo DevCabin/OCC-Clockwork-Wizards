@@ -8,6 +8,9 @@
 - Increased `dailyCount` from 3 to 10 — pipeline now stores top 10 products per daily run.
 - Added `RuleConfig` TypeScript interface to `lib/products.ts` — rule config is now clearly typed and commented for easy editing.
 - Added `GET /api/products/trending` endpoint — returns products from the last 7 days, sorted by recency. TODO: re-sort by persisted relevance score once `score` column is added to the `products` table.
+- Fixed Firecrawl extraction: Firecrawl's built-in LLM `extract` was silently failing on Amazon search pages. Added dual-format request (`markdown` + `extract`) with OpenAI markdown parsing fallback in `lib/firecrawl.ts`. Added `extractProductsFromMarkdown()` to `lib/openai.ts`.
+- Added `export const maxDuration = 300` to both job routes (`daily-products`, `daily-posts`) to explicitly declare 300s Vercel function timeout (requires Pro plan).
+- Cleared old `retro-sci-fi-shirts` data from Supabase and ran a full end-to-end test: 2 mug products discovered and stored, 2 AI posts generated. Pipeline confirmed working for `nerdy-mugs` rule.
 
 ## 2026-04-13 (session 3)
 
