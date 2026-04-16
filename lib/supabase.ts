@@ -13,6 +13,10 @@ export function getSupabaseClient() {
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
+    global: {
+      fetch: (url: RequestInfo | URL, options: RequestInit = {}) =>
+        fetch(url, { ...options, cache: "no-store" }),
+    },
     auth: {
       persistSession: false,
       autoRefreshToken: false,
