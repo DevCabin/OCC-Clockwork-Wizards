@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-05-26
+
+- Added `OCC_WEEKLY_INVENTORY_REDESIGN_PLAN_2026-05-26.md` documenting the backend redesign toward batch-prepared inventory, explicit content lifecycle states, Amazon-only round 1 ingestion, strict title-match dedupe, and the proposed phases for weekly inventory preparation.
+- Added `OCC_IMPLEMENTATION_EXECUTION_PLAN_PHASE1_2026-05-26.md` with the step-by-step execution plan for the first OCC implementation phase.
+- Bumped OCC package version from `1.0.0` to `1.0.1` to checkpoint the reset-planning baseline before implementation.
+
 ## 2026-04-16
 
 - Converted product discovery rule from `retro-sci-fi-shirts` to `nerdy-mugs` (mugs/coffee cups on Amazon + Etsy).
