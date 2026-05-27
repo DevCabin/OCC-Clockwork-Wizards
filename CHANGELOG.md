@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-05-27
+
+- Added a live authenticated legacy archive import route: `POST /api/jobs/import-wordpress`.
+- Refactored WordPress import behavior into a shared importer used by both the standalone script and the live route.
+- Added a typed wrapper plus shared runtime module for the WordPress importer so Next.js route code and direct Node execution can share the same logic safely.
+- Switched the live import path to fetch `imported-posts.json` and `redirects.json` from the NerdyMugs repo via remote URLs, avoiding local filesystem assumptions in production OCC.
+- Hardened the import workflow to:
+  - default to dry-run in the live route
+  - exclude editorial/navigation pages by default
+  - skip blank/junk legacy rows
+  - preserve legacy slug/path metadata for usable imported posts
+- Added `WP_LIVE_IMPORT_EXECUTION_PLAN_2026-05-27.md` documenting the live-import execution plan and current validated dry-run expectations.
+
 ## 2026-05-26
 
 - Added the first WordPress-archive migration groundwork for OCC: new legacy post metadata fields, a `GET /api/posts/[slug]` lookup route, and an `npm run import:wordpress` script that can import historical NerdyMugs posts into OCC as published placeholder-backed inventory.

@@ -32,6 +32,7 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `GET` | `/api/posts/ready` | None | Ready-to-publish inventory posts |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
 | `POST` | `/api/jobs/daily-posts` | Bearer token | Trigger post generation |
+| `POST` | `/api/jobs/import-wordpress` | Bearer token | Import legacy WordPress archive records into OCC |
 | `POST` | `/api/posts/mark-published` | Bearer token | Mark a post as published by `id` or `slug` |
 
 Query param: `?limit=N` (max 100) on all GET endpoints.
@@ -47,6 +48,7 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 ├── app/
 │   ├── api/jobs/daily-products/    # Product discovery + scoring job
 │   ├── api/jobs/daily-posts/       # Post generation job
+│   ├── api/jobs/import-wordpress/  # Legacy WordPress archive import job
 │   ├── api/products/latest/        # GET latest products
 │   ├── api/products/recent/        # GET recent products
 │   ├── api/posts/recent/           # GET recent posts
@@ -59,6 +61,8 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 │   ├── openai.ts                   # Scoring + post generation
 │   ├── products.ts                 # RULE config + discovery logic
 │   ├── supabase.ts                 # Supabase client
+│   ├── wordpressImport.ts          # Typed wrapper for shared WP import module
+│   ├── wordpressImport.mjs         # Shared WP import implementation
 │   └── types.ts                    # Zod schemas + TypeScript types
 ├── supabase/migrations/            # DB schema SQL
 ├── V1_ARCHITECTURE.md              # Full architecture + integration guide
@@ -78,6 +82,7 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 | `FIRECRAWL_API_KEY` | Firecrawl API key |
 | `OPENAI_API_KEY` | OpenAI API key |
 | `CRON_SECRET` | Bearer token for job endpoints |
+| `WORDPRESS_IMPORT_BASE_URL` | Optional override base URL for `imported-posts.json` / `redirects.json` |
 
 ---
 
@@ -115,10 +120,35 @@ curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/d
 curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/daily-posts" \
   -H "Authorization: Bearer $CRON_SECRET"
 
+curl -sS --max-time 300 -X POST "https://app-liart-five-43.vercel.app/api/jobs/import-wordpress" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun":true}'
+
+curl -sS --max-time 300 -X POST "https://app-liart-five-43.vercel.app/api/jobs/import-wordpress" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun":false}'
+
 curl -sS "https://app-liart-five-43.vercel.app/api/products/latest?limit=3"
 curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 curl -sS "https://app-liart-five-43.vercel.app/api/posts/recent?limit=3"
 ```
+
+### WordPress import behavior notes
+
+- Default source files are fetched live from the NerdyMugs GitHub repo:
+  - `app/imported-posts.json`
+  - `app/redirects.json`
+- The import path is **authenticated** with the same `CRON_SECRET` pattern used by other OCC jobs.
+- By default it:
+  - runs in dry-run mode unless `{"dryRun":false}` is provided
+  - excludes editorial/navigation pages
+  - skips blank/junk rows
+  - preserves legacy slug/path metadata on imported posts
+- Current validated dry-run expectation is approximately:
+  - `149` importable product-style legacy rows
+  - `20` skipped rows
 
 ---
 

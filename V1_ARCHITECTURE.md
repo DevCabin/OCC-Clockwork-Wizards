@@ -18,7 +18,8 @@ Once per day, the pipeline:
 6. **Generates** a short markdown affiliate-style post for each new product using OpenAI
 7. **Stores** each new post in Supabase as `ready` inventory
 8. **Allows** later publish marking via an authenticated endpoint
-9. **Exposes** all stored data via JSON API endpoints
+9. **Supports** authenticated live import of legacy WordPress archive content
+10. **Exposes** all stored data via JSON API endpoints
 
 No UI. No frontend. Pure data pipeline + API layer.
 
@@ -71,6 +72,7 @@ GET /api/products/recent    ← served any time from Supabase
 GET /api/posts/recent       ← served any time from Supabase
 GET /api/posts/ready        ← ready inventory only
 POST /api/posts/mark-published ← mark a post as published
+POST /api/jobs/import-wordpress ← import legacy WordPress archive rows
 ```
 
 ---
@@ -128,6 +130,32 @@ Both functions use the OpenAI **Responses API** (`/v1/responses`) with `text.for
 ### `lib/supabase.ts`
 
 - **`getSupabaseClient()`** — creates a Supabase client using the service role key (bypasses Row Level Security). Used only in server-side route handlers. Never exposed to the browser.
+
+---
+
+### `lib/wordpressImport.mjs` + `lib/wordpressImport.ts`
+
+Shared WordPress archive import logic.
+
+- **`wordpressImport.mjs`** — runtime implementation shared by:
+  - the standalone import script
+  - the live authenticated import route
+- **`wordpressImport.ts`** — typed wrapper used by the Next.js app layer
+
+Responsibilities:
+
+- load WordPress archive artifacts (`imported-posts.json`, `redirects.json`)
+- classify usable vs skipped legacy rows
+- exclude editorial/navigation pages by default
+- derive stable slugs and preserve legacy source paths
+- upsert placeholder-backed `products` and `posts` rows for usable legacy entries
+- support dry-run reporting
+
+Validated current dry-run summary:
+
+- total rows: `169`
+- importable product-style rows: `149`
+- skipped rows: `20`
 
 ---
 
@@ -199,6 +227,28 @@ Flow:
 ### `app/api/posts/mark-published/route.ts`
 
 `POST /api/posts/mark-published` — authenticated lifecycle mutation that marks a post `published` and sets `published_at`. Accepts either `id` or `slug`.
+
+---
+
+### `app/api/jobs/import-wordpress/route.ts`
+
+`POST /api/jobs/import-wordpress` — authenticated legacy archive import route.
+
+Behavior:
+
+- requires `Authorization: Bearer <CRON_SECRET>`
+- fetches WordPress artifact JSON from the NerdyMugs repo by default via raw GitHub URLs
+- supports request body overrides for:
+  - `dryRun`
+  - `includeEditorial`
+  - `importedPostsUrl`
+  - `redirectsUrl`
+- defaults to `dryRun: true` for safer first execution
+- excludes editorial/navigation pages unless explicitly included
+
+Primary use:
+
+- trigger live import/reporting against production OCC without relying on local filesystem access
 
 ---
 
@@ -403,6 +453,49 @@ Triggers post generation for any products that don't yet have a post.
 
 ---
 
+### `POST /api/jobs/import-wordpress`
+
+Runs the legacy WordPress archive import against artifact JSON sources.
+
+**Auth:** `Authorization: Bearer <CRON_SECRET>` — required.
+
+**Request body:**
+
+```json
+{
+  "dryRun": true,
+  "includeEditorial": false
+}
+```
+
+Optional body fields:
+
+- `importedPostsUrl`
+- `redirectsUrl`
+
+**Response shape:**
+
+```json
+{
+  "success": true,
+  "source": {
+    "importedPostsUrl": "https://raw.githubusercontent.com/DevCabin/NerdyMugs-The-Machine/main/app/imported-posts.json",
+    "redirectsUrl": "https://raw.githubusercontent.com/DevCabin/NerdyMugs-The-Machine/main/app/redirects.json"
+  },
+  "summary": {
+    "dryRun": true,
+    "includeEditorial": false,
+    "totalRecords": 169,
+    "usableRecords": 149,
+    "importedProducts": 149,
+    "importedPosts": 149,
+    "skipped": 20
+  }
+}
+```
+
+---
+
 ## 6. Integration Guide — How Downstream Apps Access This Data
 
 The four `GET` endpoints are **open, unauthenticated, and CORS-permissive** (Next.js default). Any frontend, mobile app, or external service can read from them directly.
@@ -559,6 +652,7 @@ import ReactMarkdown from 'react-markdown';
 | `FIRECRAWL_API_KEY` | ✅ | Firecrawl API key |
 | `OPENAI_API_KEY` | ✅ | OpenAI API key |
 | `CRON_SECRET` | ✅ | Bearer token for job endpoints — set same value in Vercel |
+| `WORDPRESS_IMPORT_BASE_URL` | ❌ | Optional base URL override for hosted WordPress artifact JSON files |
 
 ---
 
@@ -583,6 +677,16 @@ curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/d
 
 curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/daily-posts" \
   -H "Authorization: Bearer $CRON_SECRET"
+
+curl -sS --max-time 300 -X POST "https://app-liart-five-43.vercel.app/api/jobs/import-wordpress" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun":true}'
+
+curl -sS --max-time 300 -X POST "https://app-liart-five-43.vercel.app/api/jobs/import-wordpress" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun":false}'
 ```
 
 ---
