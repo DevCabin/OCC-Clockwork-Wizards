@@ -10,8 +10,9 @@ export async function GET(req: NextRequest) {
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 21;
 
   const { data, error } = await supabase
-    .from("products")
-    .select("id, rule_name, title, description, image_url, price, currency, product_url, source_domain, normalized_title, discovered_at, run_date, created_at")
+    .from("posts")
+    .select("id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, status, published_at, scheduled_for, run_date, created_at")
+    .eq("status", "ready")
     .order("run_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -20,5 +21,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ products: data ?? [] });
+  return NextResponse.json({ posts: data ?? [] });
 }

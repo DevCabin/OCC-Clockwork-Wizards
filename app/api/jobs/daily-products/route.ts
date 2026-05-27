@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractProductsFromUrl } from "@/lib/firecrawl";
 import { scoreProductWithOpenAI } from "@/lib/openai";
-import { domainAllowed, generateCandidateUrls, getRunDateISO, RULE } from "@/lib/products";
+import {
+  domainAllowed,
+  generateCandidateUrls,
+  getDuplicateLookbackSinceISO,
+  getRunDateISO,
+  normalizeTitle,
+  RULE,
+} from "@/lib/products";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { Product } from "@/lib/types";
 
@@ -29,6 +36,24 @@ export async function POST(req: NextRequest) {
   const errors: string[] = [];
   const candidates = generateCandidateUrls();
   const scored: StoredProduct[] = [];
+  const seenTitlesThisRun = new Set<string>();
+
+  const { data: existingProducts, error: existingProductsError } = await supabase
+    .from("products")
+    .select("normalized_title")
+    .eq("rule_name", RULE.name)
+    .gte("discovered_at", getDuplicateLookbackSinceISO())
+    .not("normalized_title", "is", null);
+
+  if (existingProductsError) {
+    return NextResponse.json({ success: false, error: existingProductsError.message }, { status: 500 });
+  }
+
+  const existingNormalizedTitles = new Set(
+    (existingProducts ?? [])
+      .map((row: { normalized_title: string | null }) => row.normalized_title)
+      .filter((value: string | null): value is string => Boolean(value))
+  );
 
   for (const candidateUrl of candidates) {
     try {
@@ -37,10 +62,16 @@ export async function POST(req: NextRequest) {
       for (const product of extractedProducts) {
         if (!domainAllowed(product.source_domain)) continue;
 
+        const normalizedTitle = normalizeTitle(product.title);
+        if (existingNormalizedTitles.has(normalizedTitle) || seenTitlesThisRun.has(normalizedTitle)) {
+          continue;
+        }
+
         try {
           const { score, isRelevant } = await scoreProductWithOpenAI(product);
           if (!isRelevant) continue;
-          scored.push({ ...product, score });
+          seenTitlesThisRun.add(normalizedTitle);
+          scored.push({ ...product, normalized_title: normalizedTitle, score });
         } catch (err) {
           errors.push(`score failed for ${product.product_url}: ${String(err)}`);
         }
@@ -67,6 +98,8 @@ export async function POST(req: NextRequest) {
       currency: p.currency,
       product_url: p.product_url,
       source_domain: p.source_domain,
+      normalized_title: p.normalized_title ?? normalizeTitle(p.title),
+      discovered_at: new Date().toISOString(),
       run_date: runDate,
     }));
 

@@ -10,13 +10,15 @@
 
 Once per day, the pipeline:
 
-1. **Discovers** product candidate URLs from Amazon/Etsy search pages
+1. **Discovers** product candidate URLs from Amazon search pages
 2. **Extracts** structured product data from each page via Firecrawl
 3. **Scores** each product for relevance using OpenAI
-4. **Stores** the top 3 scored products in Supabase
-5. **Generates** a short markdown affiliate-style post for each new product using OpenAI
-6. **Stores** each post in Supabase
-7. **Exposes** all stored data via JSON API endpoints
+4. **Rejects** strict normalized-title duplicates against recent inventory
+5. **Stores** prepared products in Supabase
+6. **Generates** a short markdown affiliate-style post for each new product using OpenAI
+7. **Stores** each new post in Supabase as `ready` inventory
+8. **Allows** later publish marking via an authenticated endpoint
+9. **Exposes** all stored data via JSON API endpoints
 
 No UI. No frontend. Pure data pipeline + API layer.
 
@@ -31,7 +33,7 @@ Vercel Cron (13:00 UTC)
 POST /api/jobs/daily-products
         │
         ├─ generateCandidateUrls()        ← lib/products.ts
-        │   └─ builds Amazon/Etsy search URLs from RULE keywords
+        │   └─ builds Amazon search URLs from RULE keywords
         │
         ├─ extractProductsFromUrl()       ← lib/firecrawl.ts
         │   └─ Firecrawl API scrapes + extracts structured JSON
@@ -45,7 +47,10 @@ POST /api/jobs/daily-products
         ├─ scoreProductWithOpenAI()       ← lib/openai.ts
         │   └─ OpenAI returns { score: 0-100, isRelevant: boolean }
         │
-        └─ top 3 by score → upsert to Supabase `products` table
+        ├─ normalizeTitle()               ← lib/products.ts
+        │   └─ skips recent duplicate titles before storage
+        │
+        └─ top products by score → upsert to Supabase `products` table
 
 Vercel Cron (13:15 UTC)
         │
@@ -59,11 +64,13 @@ POST /api/jobs/daily-posts
         ├─ generatePostForProduct()       ← lib/openai.ts
         │   └─ OpenAI returns { title, slug, excerpt, body_md }
         │
-        └─ upsert to Supabase `posts` table (one post per product)
+        └─ upsert to Supabase `posts` table with `status = ready`
 
 GET /api/products/latest    ← served any time from Supabase
 GET /api/products/recent    ← served any time from Supabase
 GET /api/posts/recent       ← served any time from Supabase
+GET /api/posts/ready        ← ready inventory only
+POST /api/posts/mark-published ← mark a post as published
 ```
 
 ---
@@ -78,13 +85,15 @@ Core business logic and configuration.
   - `name` — identifier stored on every product/post row
   - `keywords` — used to build candidate search URLs
   - `excludeKeywords` — products matching these are rejected
-  - `allowedDomains` — only `amazon.com` and `etsy.com` accepted
+  - `allowedDomains` — only `amazon.com` accepted in round 1
   - `priceMin` / `priceMax` — scoring guidance for OpenAI
-  - `dailyCount` — how many top products to store per run (currently `3`)
+  - `dailyCount` — how many top products to store per run (currently `10`)
 
-- **`generateCandidateUrls()`** — builds Amazon + Etsy search URLs from rule keywords. Returns 8 URLs (4 keywords × 2 domains).
+- **`generateCandidateUrls()`** — builds Amazon search URLs from rule keywords.
 
 - **`normalizeProduct(input)`** — validates raw scraped data against the Zod `productSchema`. Returns `Product | null`.
+
+- **`normalizeTitle(title)`** — lowercases, trims, and collapses whitespace for strict round-1 duplicate checks.
 
 - **`domainAllowed(domain)`** — checks if extracted domain matches `RULE.allowedDomains`.
 
@@ -126,11 +135,12 @@ Both functions use the OpenAI **Responses API** (`/v1/responses`) with `text.for
 
 Zod schemas + TypeScript types used across the codebase:
 
-- **`Product`** — the canonical product type: `{ title, description, image_url, price, currency, product_url, source_domain }`
+- **`Product`** — the canonical product type: `{ title, description, image_url, price, currency, product_url, source_domain, normalized_title? }`
 - **`productSchema`** — Zod validator for raw scraped data
 - **`openAiScoreSchema`** — validates `{ score, isRelevant }` from OpenAI
 - **`openAiPostSchema`** — validates `{ title, slug, excerpt, body_md }` from OpenAI
 - **`GeneratedPost`** — TypeScript type inferred from `openAiPostSchema`
+- **`PostStatus`** — lifecycle status union: `ready | published | rejected`
 
 ---
 
@@ -140,10 +150,11 @@ The product ingestion job. **POST only, requires `Authorization: Bearer <CRON_SE
 
 Flow:
 1. Checks auth header
-2. Calls `generateCandidateUrls()` → gets 8 search URLs
-3. For each URL: calls `extractProductsFromUrl()` then scores each extracted product
-4. Sorts all relevant products by score descending, takes top `RULE.dailyCount` (3)
-5. Upserts to `products` with conflict key `(product_url, run_date)` — safe to re-run same day
+2. Calls `generateCandidateUrls()` → gets Amazon search URLs only
+3. Loads recent `normalized_title` values from Supabase for duplicate prevention
+4. For each URL: calls `extractProductsFromUrl()`, rejects duplicate titles, then scores each extracted product
+5. Sorts all relevant products by score descending, takes top `RULE.dailyCount` (10)
+6. Upserts to `products` with conflict key `(product_url, run_date)` while also storing `normalized_title` and `discovered_at`
 
 ---
 
@@ -157,7 +168,7 @@ Flow:
 3. Fetches all existing post `product_id` values
 4. Filters to products that don't yet have a post
 5. Generates a post for each candidate via OpenAI
-6. Upserts to `posts` with conflict key `product_id` — one post per product, safe to re-run
+6. Upserts to `posts` with conflict key `product_id` and stores new rows with `status = ready`
 
 ---
 
@@ -175,7 +186,19 @@ Flow:
 
 ### `app/api/posts/recent/route.ts`
 
-`GET /api/posts/recent` — returns most recent posts ordered by `run_date desc`, `created_at desc`. Default limit: `21`, max `100`.
+`GET /api/posts/recent` — returns most recent posts ordered by `run_date desc`, `created_at desc`. Includes lifecycle fields `status`, `published_at`, and `scheduled_for`. Default limit: `21`, max `100`.
+
+---
+
+### `app/api/posts/ready/route.ts`
+
+`GET /api/posts/ready` — returns only posts whose lifecycle `status = 'ready'`. Default limit: `21`, max `100`.
+
+---
+
+### `app/api/posts/mark-published/route.ts`
+
+`POST /api/posts/mark-published` — authenticated lifecycle mutation that marks a post `published` and sets `published_at`. Accepts either `id` or `slug`.
 
 ---
 
@@ -203,7 +226,7 @@ Vercel calls these as authenticated POST requests using the `CRON_SECRET` env va
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` | primary key, auto-generated |
-| `rule_name` | `text` | e.g. `retro-sci-fi-shirts` |
+| `rule_name` | `text` | e.g. `nerdy-mugs` |
 | `title` | `text` | product title from scrape |
 | `description` | `text` | nullable |
 | `image_url` | `text` | nullable |
@@ -265,14 +288,16 @@ Returns the most recently stored products.
   "products": [
     {
       "id": "uuid",
-      "rule_name": "retro-sci-fi-shirts",
-      "title": "Retro Sci-Fi Alien Abduction Sunset I UFO T-Shirt",
+      "rule_name": "nerdy-mugs",
+      "title": "Funny Programmer Coffee Mug",
       "description": "...",
       "image_url": "https://m.media-amazon.com/images/...",
       "price": 16.99,
       "currency": "USD",
       "product_url": "https://www.amazon.com/...",
       "source_domain": "amazon.com",
+      "normalized_title": "funny programmer coffee mug",
+      "discovered_at": "2026-05-26T18:30:00.000Z",
       "run_date": "2026-04-13",
       "created_at": "2026-04-13T19:37:14.495369+00:00"
     }
@@ -318,13 +343,16 @@ Returns the most recent AI-generated posts with full markdown content.
     {
       "id": "uuid",
       "product_id": "uuid",
-      "rule_name": "retro-sci-fi-shirts",
-      "product_title": "Retro Sci-Fi Alien Abduction Sunset I UFO T-Shirt",
+      "rule_name": "nerdy-mugs",
+      "product_title": "Funny Programmer Coffee Mug",
       "product_url": "https://www.amazon.com/...",
-      "title": "Retro Sci-Fi Alien Abduction Sunset I UFO T-Shirt",
-      "slug": "retro-sci-fi-alien-abduction-sunset-ufo-t-shirt-b217a3f7",
-      "excerpt": "Step into the world of retro sci-fi...",
-      "body_md": "If you're a fan of retro sci-fi aesthetics...\n\n[Check it out here](...)",
+      "title": "Funny Programmer Coffee Mug",
+      "slug": "funny-programmer-coffee-mug-b217a3f7",
+      "excerpt": "A compact mug pick for developers who like their coffee with a side of code.",
+      "body_md": "If your ideal desk setup includes clean code and strong coffee, this mug fits right in...\n\n[Check it out here](...)",
+      "status": "ready",
+      "published_at": null,
+      "scheduled_for": null,
       "run_date": "2026-04-13",
       "created_at": "2026-04-13T19:35:13.940293+00:00"
     }
@@ -346,8 +374,8 @@ Triggers the product discovery + scoring + storage pipeline.
 {
   "success": true,
   "runDate": "2026-04-13",
-  "candidatesTried": 8,
-  "productsStored": 3,
+  "candidatesTried": 6,
+  "productsStored": 10,
   "errors": []
 }
 ```
@@ -367,8 +395,8 @@ Triggers post generation for any products that don't yet have a post.
   "success": true,
   "runDate": "2026-04-13",
   "productsChecked": 25,
-  "postsAttempted": 3,
-  "postsStored": 3,
+  "postsAttempted": 10,
+  "postsStored": 10,
   "errors": []
 }
 ```
@@ -377,7 +405,7 @@ Triggers post generation for any products that don't yet have a post.
 
 ## 6. Integration Guide — How Downstream Apps Access This Data
 
-The three `GET` endpoints are **open, unauthenticated, and CORS-permissive** (Next.js default). Any frontend, mobile app, or external service can read from them directly.
+The four `GET` endpoints are **open, unauthenticated, and CORS-permissive** (Next.js default). Any frontend, mobile app, or external service can read from them directly.
 
 ---
 
@@ -388,8 +416,8 @@ The three `GET` endpoints are **open, unauthenticated, and CORS-permissive** (Ne
 const res = await fetch('https://app-liart-five-43.vercel.app/api/products/latest?limit=3');
 const { products } = await res.json();
 
-// Fetch recent posts
-const res2 = await fetch('https://app-liart-five-43.vercel.app/api/posts/recent?limit=21');
+// Fetch ready inventory posts
+const res2 = await fetch('https://app-liart-five-43.vercel.app/api/posts/ready?limit=21');
 const { posts } = await res2.json();
 ```
 
@@ -416,6 +444,16 @@ export function useRecentPosts(limit = 21) {
   const [posts, setPosts] = useState([]);
   useEffect(() => {
     fetch(`${BASE}/api/posts/recent?limit=${limit}`)
+      .then(r => r.json())
+      .then(d => setPosts(d.posts ?? []));
+  }, [limit]);
+  return posts;
+}
+
+export function useReadyPosts(limit = 21) {
+  const [posts, setPosts] = useState([]);
+  useEffect(() => {
+    fetch(`${BASE}/api/posts/ready?limit=${limit}`)
       .then(r => r.json())
       .then(d => setPosts(d.posts ?? []));
   }, [limit]);
@@ -473,11 +511,13 @@ import ReactMarkdown from 'react-markdown';
 | `products[].image_url` | ❌ | can be null |
 | `products[].price` | ❌ | can be null |
 | `products[].currency` | ❌ | can be null |
+| `products[].normalized_title` | ❌ | stored duplicate key |
 | `posts[].slug` | ✅ | unique, use as URL slug |
 | `posts[].excerpt` | ✅ | short description, safe for meta tags |
 | `posts[].body_md` | ✅ | full markdown content |
 | `posts[].product_url` | ✅ | denormalized for convenience |
 | `posts[].product_id` | ✅ | links back to `products.id` |
+| `posts[].status` | ✅ | lifecycle state |
 
 ---
 
@@ -489,7 +529,7 @@ import ReactMarkdown from 'react-markdown';
 - **Endpoint:** `POST https://api.firecrawl.dev/v1/scrape`
 - **Format used:** `extract` with a typed JSON schema
 - **Key env var:** `FIRECRAWL_API_KEY`
-- **Rate concern:** currently called for every candidate URL (8 per run). Each is a separate API call.
+- **Rate concern:** currently called for every Amazon candidate URL generated from the active keyword set. Each is a separate API call.
 
 ### OpenAI
 
@@ -549,8 +589,8 @@ curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/d
 
 ## 10. V1 Constraints / Known Limits
 
-- **One rule only** (`retro-sci-fi-shirts`). To add more rules, extend `lib/products.ts`.
-- **3 products per day max.** Change `RULE.dailyCount`.
+- **One rule only** (`nerdy-mugs`). To add more rules, extend `lib/products.ts`.
+- **10 products per run max by default.** Change `RULE.dailyCount`.
 - **One post per product** — enforced by unique constraint on `posts(product_id)`.
 - **No pagination** beyond the `limit` param — always returns most recent first.
 - **No auth on GET endpoints** — data is public by design.

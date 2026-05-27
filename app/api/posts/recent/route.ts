@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("posts")
-    .select("id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, run_date, created_at")
+    .select("id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, status, published_at, scheduled_for, run_date, created_at")
     .order("run_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);

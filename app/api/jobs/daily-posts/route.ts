@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generatePostForProduct } from "@/lib/openai";
 import { getRunDateISO, RULE } from "@/lib/products";
 import { getSupabaseClient } from "@/lib/supabase";
-import type { Product } from "@/lib/types";
+import type { PostStatus, Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // seconds — requires Vercel Pro or higher
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("id, rule_name, title, description, image_url, price, currency, product_url, source_domain, run_date, created_at")
+    .select("id, rule_name, title, description, image_url, price, currency, product_url, source_domain, normalized_title, run_date, created_at")
     .eq("rule_name", RULE.name)
     .order("run_date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -55,6 +55,9 @@ export async function POST(req: NextRequest) {
     slug: string;
     excerpt: string;
     body_md: string;
+    status: PostStatus;
+    published_at: null;
+    scheduled_for: null;
     run_date: string;
   }> = [];
 
@@ -80,6 +83,9 @@ export async function POST(req: NextRequest) {
         slug: `${post.slug}-${String(product.id).slice(0, 8)}`,
         excerpt: post.excerpt,
         body_md: post.body_md,
+        status: "ready",
+        published_at: null,
+        scheduled_for: null,
         run_date: runDate,
       });
     } catch (err) {

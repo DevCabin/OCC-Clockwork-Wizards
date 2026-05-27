@@ -10,10 +10,10 @@
 
 This is the **backend data pipeline only**. It:
 
-1. Discovers products from Amazon/Etsy via Firecrawl
+1. Discovers products from Amazon via Firecrawl
 2. Scores them for relevance using OpenAI
-3. Stores the top 3 per day in Supabase
-4. Generates AI-written markdown posts for each product
+3. Stores prepared product inventory in Supabase
+4. Generates AI-written markdown posts for each product with lifecycle status support
 5. Exposes everything via open JSON API endpoints
 
 **No frontend lives here.** The NerdyMugs Vite/React frontend is in a separate repo and consumes these endpoints.
@@ -29,8 +29,10 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `GET` | `/api/products/latest` | None | Latest products (default 3) |
 | `GET` | `/api/products/recent` | None | Recent products (default 21) |
 | `GET` | `/api/posts/recent` | None | AI-generated posts (default 21) |
+| `GET` | `/api/posts/ready` | None | Ready-to-publish inventory posts |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
 | `POST` | `/api/jobs/daily-posts` | Bearer token | Trigger post generation |
+| `POST` | `/api/posts/mark-published` | Bearer token | Mark a post as published by `id` or `slug` |
 
 Query param: `?limit=N` (max 100) on all GET endpoints.
 
@@ -48,6 +50,8 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 │   ├── api/products/latest/        # GET latest products
 │   ├── api/products/recent/        # GET recent products
 │   ├── api/posts/recent/           # GET recent posts
+│   ├── api/posts/ready/            # GET ready posts
+│   ├── api/posts/mark-published/   # POST lifecycle publish mutation
 │   ├── layout.tsx
 │   └── page.tsx                    # Minimal API index page
 ├── lib/
@@ -93,6 +97,7 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 | Latest products (3) | [/api/products/latest](https://app-liart-five-43.vercel.app/api/products/latest) |
 | Recent products (21) | [/api/products/recent](https://app-liart-five-43.vercel.app/api/products/recent) |
 | Recent posts (21) | [/api/posts/recent](https://app-liart-five-43.vercel.app/api/posts/recent) |
+| Ready posts (21) | [/api/posts/ready](https://app-liart-five-43.vercel.app/api/posts/ready) |
 | Latest products — 10 | [/api/products/latest?limit=10](https://app-liart-five-43.vercel.app/api/products/latest?limit=10) |
 | Recent posts — 5 | [/api/posts/recent?limit=5](https://app-liart-five-43.vercel.app/api/posts/recent?limit=5) |
 | API index | [/](https://app-liart-five-43.vercel.app) |
@@ -111,6 +116,7 @@ curl -sS --max-time 120 -X POST "https://app-liart-five-43.vercel.app/api/jobs/d
   -H "Authorization: Bearer $CRON_SECRET"
 
 curl -sS "https://app-liart-five-43.vercel.app/api/products/latest?limit=3"
+curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 curl -sS "https://app-liart-five-43.vercel.app/api/posts/recent?limit=3"
 ```
 

@@ -2,6 +2,11 @@
 
 ## 2026-05-26
 
+- Implemented OCC Phase 1 backend groundwork for the reset: added a Supabase migration for `products.normalized_title`, `products.discovered_at`, `posts.status`, `posts.published_at`, and `posts.scheduled_for`.
+- Switched the active round-1 ingestion path to Amazon-only and removed Etsy search URL generation from `lib/products.ts`.
+- Added conservative normalized-title duplicate handling with a 90-day lookback in `POST /api/jobs/daily-products`, plus in-run duplicate blocking.
+- Updated `POST /api/jobs/daily-posts` so newly generated content is stored as `ready` inventory instead of implicitly published content.
+- Added additive lifecycle endpoints: `GET /api/posts/ready` and authenticated `POST /api/posts/mark-published`.
 - Added `OCC_WEEKLY_INVENTORY_REDESIGN_PLAN_2026-05-26.md` documenting the backend redesign toward batch-prepared inventory, explicit content lifecycle states, Amazon-only round 1 ingestion, strict title-match dedupe, and the proposed phases for weekly inventory preparation.
 - Added `OCC_IMPLEMENTATION_EXECUTION_PLAN_PHASE1_2026-05-26.md` with the step-by-step execution plan for the first OCC implementation phase.
 - Bumped OCC package version from `1.0.0` to `1.0.1` to checkpoint the reset-planning baseline before implementation.

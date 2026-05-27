@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   // upsert. For now, trending = most recent products from the last 7 days.
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select("id, rule_name, title, description, image_url, price, currency, product_url, source_domain, normalized_title, discovered_at, run_date, created_at")
     .gte("run_date", sinceISO)
     .order("run_date", { ascending: false })
     .order("created_at", { ascending: false })

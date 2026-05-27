@@ -8,6 +8,7 @@ export type Product = {
   currency: string | null;
   product_url: string;
   source_domain: string | null;
+  normalized_title?: string;
 };
 
 export const productSchema = z.object({
@@ -18,6 +19,7 @@ export const productSchema = z.object({
   currency: z.string().min(1).nullable(),
   product_url: z.string().url(),
   source_domain: z.string().min(1).nullable(),
+  normalized_title: z.string().min(1).optional(),
 });
 
 export const openAiScoreSchema = z.object({
@@ -33,3 +35,6 @@ export const openAiPostSchema = z.object({
 });
 
 export type GeneratedPost = z.infer<typeof openAiPostSchema>;
+
+export const postStatusSchema = z.enum(["ready", "published", "rejected"]);
+export type PostStatus = z.infer<typeof postStatusSchema>;

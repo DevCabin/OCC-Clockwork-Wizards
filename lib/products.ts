@@ -25,11 +25,13 @@ export const RULE: RuleConfig = {
     "funny coffee cup",
   ],
   excludeKeywords: ["poster", "sticker", "download"],
-  allowedDomains: ["amazon.com", "etsy.com"],
+  allowedDomains: ["amazon.com"],
   priceMin: 10,
   priceMax: 30,
   dailyCount: 10,
 };
+
+export const DUPLICATE_LOOKBACK_DAYS = 90;
 
 export function getRunDateISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -42,7 +44,6 @@ export function generateCandidateUrls(): string[] {
   for (const phrase of phrases) {
     const encoded = encodeURIComponent(phrase);
     urls.add(`https://www.amazon.com/s?k=${encoded}`);
-    urls.add(`https://www.etsy.com/search?q=${encoded}`);
   }
 
   return Array.from(urls);
@@ -56,7 +57,18 @@ export function normalizeProduct(input: unknown): Product | null {
   product.title = product.title.trim();
   product.description = (product.description ?? "").trim();
   product.source_domain = normalizeDomain(product.source_domain, product.product_url);
+  product.normalized_title = normalizeTitle(product.title);
   return product;
+}
+
+export function normalizeTitle(title: string): string {
+  return title.toLowerCase().trim().replace(/\s+/g, " ");
+}
+
+export function getDuplicateLookbackSinceISO(days = DUPLICATE_LOOKBACK_DAYS): string {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  return since.toISOString();
 }
 
 export function domainAllowed(domain: string | null): boolean {
