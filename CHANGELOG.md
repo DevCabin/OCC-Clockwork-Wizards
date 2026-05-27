@@ -2,6 +2,7 @@
 
 ## 2026-05-26
 
+- Added the first WordPress-archive migration groundwork for OCC: new legacy post metadata fields, a `GET /api/posts/[slug]` lookup route, and an `npm run import:wordpress` script that can import historical NerdyMugs posts into OCC as published placeholder-backed inventory.
 - Implemented OCC Phase 1 backend groundwork for the reset: added a Supabase migration for `products.normalized_title`, `products.discovered_at`, `posts.status`, `posts.published_at`, and `posts.scheduled_for`.
 - Switched the active round-1 ingestion path to Amazon-only and removed Etsy search URL generation from `lib/products.ts`.
 - Added conservative normalized-title duplicate handling with a 90-day lookback in `POST /api/jobs/daily-products`, plus in-run duplicate blocking.
