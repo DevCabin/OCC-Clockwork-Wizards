@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
-import { loadWordPressArtifactsFromUrls, runWordPressImport } from "@/lib/wordpressImport";
+import {
+  loadWordPressArtifactsFromUrls,
+  runWordPressImport,
+  type LegacyImportRecord,
+  type LegacyRedirectRecord,
+} from "@/lib/wordpressImport";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
+
+function isLegacyImportRecordArray(value: unknown): value is LegacyImportRecord[] {
+  return Array.isArray(value);
+}
+
+function isLegacyRedirectRecordArray(value: unknown): value is LegacyRedirectRecord[] {
+  return Array.isArray(value);
+}
 
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -29,6 +42,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const dryRun = body?.dryRun !== false;
   const includeEditorial = body?.includeEditorial === true;
+  const bodyImportedPosts = isLegacyImportRecordArray(body?.importedPosts) ? body.importedPosts : null;
+  const bodyRedirects = isLegacyRedirectRecordArray(body?.redirects) ? body.redirects : null;
   const importedPostsUrl = typeof body?.importedPostsUrl === "string" && body.importedPostsUrl.trim()
     ? body.importedPostsUrl.trim()
     : getDefaultArtifactUrl("imported-posts.json");
@@ -37,7 +52,15 @@ export async function POST(req: NextRequest) {
     : getDefaultArtifactUrl("redirects.json");
 
   try {
-    const { importedPosts, redirects } = await loadWordPressArtifactsFromUrls(importedPostsUrl, redirectsUrl);
+    const artifactSource = bodyImportedPosts && bodyRedirects ? "request-body" : "remote-urls";
+    const { importedPosts, redirects } =
+      artifactSource === "request-body"
+        ? {
+            importedPosts: bodyImportedPosts,
+            redirects: bodyRedirects,
+          }
+        : await loadWordPressArtifactsFromUrls(importedPostsUrl, redirectsUrl);
+
     const summary = await runWordPressImport({
       importedPosts,
       redirects,
@@ -49,8 +72,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       source: {
-        importedPostsUrl,
-        redirectsUrl,
+        type: artifactSource,
+        importedPostsUrl: artifactSource === "remote-urls" ? importedPostsUrl : null,
+        redirectsUrl: artifactSource === "remote-urls" ? redirectsUrl : null,
+        importedPostsCount: importedPosts.length,
+        redirectsCount: redirects.length,
       },
       summary,
     });
