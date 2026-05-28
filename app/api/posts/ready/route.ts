@@ -11,8 +11,11 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("posts")
-    .select("id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, status, published_at, scheduled_for, legacy_source_url, legacy_source_path, content_source, run_date, created_at")
-    .eq("status", "ready")
+    .select(`
+      id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, status, published_at, scheduled_for, legacy_source_url, legacy_source_path, content_source, run_date, created_at,
+      products(image_url)
+    `)
+    .in("status", ["ready", "published"])
     .order("run_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);

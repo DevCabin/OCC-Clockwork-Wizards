@@ -20,7 +20,11 @@ export async function GET(_req: NextRequest, context: RouteContext) {
 
   const { data, error } = await supabase
     .from("posts")
-    .select("id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, status, published_at, scheduled_for, legacy_source_url, legacy_source_path, content_source, run_date, created_at")
+    .select(`
+      id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, 
+      status, published_at, scheduled_for, legacy_source_url, legacy_source_path, content_source, run_date, created_at,
+      products(image_url, description)
+    `)
     .eq("slug", slug)
     .limit(1);
 
