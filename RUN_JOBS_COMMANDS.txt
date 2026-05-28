@@ -1,0 +1,55 @@
+# Step-by-Step Commands to Run WP Cleanup Jobs
+# Run these in your terminal one at a time:
+
+# ===========================================
+# STEP 1: Set your CRON_SECRET
+# Get this from Vercel dashboard > Project Settings > Environment Variables
+# Copy the value and paste it in the quotes below:
+# ===========================================
+export CRON_SECRET="paste_your_cron_secret_here"
+
+
+# ===========================================
+# STEP 2: Dry run - see what will be hidden (no changes yet)
+# ===========================================
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/hide-no-image-posts" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": true}'
+
+
+# ===========================================
+# STEP 3: ACTUALLY hide posts with no images
+# Change dryRun to false when ready:
+# ===========================================
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/hide-no-image-posts" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": false}'
+
+
+# ===========================================
+# STEP 4: Dry run - see what affiliate links will be repaired
+# ===========================================
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/repair-affiliate-links" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": true}'
+
+
+# ===========================================
+# STEP 5: ACTUALLY repair all affiliate links
+# Change dryRun to false when ready:
+# ===========================================
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/repair-affiliate-links" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": false}'
+
+
+# ===========================================
+# STEP 6: Verify the fixes
+# Check recent posts - no more nerdymugs.com links:
+# ===========================================
+curl -sS "https://app-liart-five-43.vercel.app/api/posts/recent?limit=20" | grep -o '"product_url":"[^"]*"' | head -20
+
