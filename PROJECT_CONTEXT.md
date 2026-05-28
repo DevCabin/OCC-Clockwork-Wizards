@@ -1,6 +1,6 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-28 5:45 PM CDT
+## Last Updated: 2026-05-28 6:40 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
@@ -25,12 +25,13 @@ Build a working coffee mug affiliate website with:
 - CORS headers active: `access-control-allow-origin: *`
 
 ### Frontend (NerdyMugs-The-Machine) ✅
-- Version: `2.3.3`
+- Version: `2.3.4`
 - Live frontend now serves NerdyMugs bundle with cache-busting query string
 - Grid loads posts from `/api/posts/ready?limit=100`
 - Cards open in-app detail view
 - Detail view fetches `/api/posts/[slug]`
-- Detail CTA links to Amazon through `post.product_url`
+- Browser back and `Back to all posts` return from detail view to grid
+- Detail CTA links to Amazon through `post.product_url` with `tag=georgwebsi-20`
 - Top posts display Amazon product images; lower missing images are acceptable for now
 
 ## Recently Fixed
@@ -39,6 +40,8 @@ Build a working coffee mug affiliate website with:
 - Frontend posts feed CORS preflight issue fixed by removing custom request headers
 - Frontend image shape mismatch fixed (`products` can be object or array)
 - Backend post detail CORS fixed on `/api/posts/[slug]`
+- Frontend back navigation fixed with `?post={slug}` URL state
+- Frontend Amazon links now force associate tag `georgwebsi-20`
 
 ## Repositories
 - **OCC-Clockwork-Wizards**: `/Users/george/GITHUB/OCC-Clockwork-Wizards`
@@ -74,8 +77,8 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 ```
 
 ## Next Steps (To Complete)
-1. User live-test full flow: grid → detail page → Amazon CTA
-2. Spot-check several Amazon CTAs for correct affiliate destinations
+1. User live-test full flow: grid → detail page → back to grid → Amazon CTA
+2. Spot-check several Amazon CTAs for `tag=georgwebsi-20`
 3. Defer missing image cleanup unless it blocks launch quality
 4. Later SEO upgrade: real slug URLs instead of SPA-only selected detail state
 

@@ -15,9 +15,11 @@
 - [x] Frontend handles `products` as either object or array for image rendering
 - [x] Backend `/api/posts/[slug]` now returns CORS headers and supports `OPTIONS`
 - [x] Live detail endpoint verified with CORS headers
+- [x] Frontend browser back and `Back to all posts` behavior fixed
+- [x] Frontend Amazon URLs now force associate tag `georgwebsi-20`
 - [x] Package versions bumped:
   - OCC backend: `1.0.2`
-  - NerdyMugs frontend: `2.3.3`
+  - NerdyMugs frontend: `2.3.4`
 
 ---
 
@@ -34,7 +36,8 @@ Expected flow:
 1. Grid loads posts.
 2. Click a card.
 3. Individual detail view loads post content.
-4. `View on Amazon` CTA opens the Amazon product/search URL.
+4. Browser back or `Back to all posts` returns to the grid.
+5. `View on Amazon` CTA opens the Amazon product/search URL with `tag=georgwebsi-20`.
 
 Notes:
 
