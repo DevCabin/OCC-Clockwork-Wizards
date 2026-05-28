@@ -22,11 +22,8 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseClient();
 
-    // Step 1: Load source data
-    const sourceDataUrl = 'https://raw.githubusercontent.com/DevCabin/NerdyMugs-The-Machine/main/app/imported-posts.json';
-    
-    const response = await fetch(sourceDataUrl);
-    const sourceData = await response.json();
+    // Step 1: Load source data from local mapping file
+    const sourceData = require('@/lib/amazon-url-mappings.json');
 
     // Step 2: Query all legacy WordPress posts
     const { data: posts, error } = await supabase
