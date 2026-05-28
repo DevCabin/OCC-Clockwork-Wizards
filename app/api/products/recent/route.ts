@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import { getImageWithPlaceholder } from "@/lib/placeholders";
 
 export const dynamic = "force-dynamic";
 
@@ -20,5 +21,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ products: data ?? [] });
+  // Add placeholder images for products without images (SEO-friendly!)
+  const productsWithPlaceholders = (data ?? []).map(product => ({
+    ...product,
+    image_url: getImageWithPlaceholder(product.image_url),
+  }));
+
+  return NextResponse.json({ products: productsWithPlaceholders });
 }
