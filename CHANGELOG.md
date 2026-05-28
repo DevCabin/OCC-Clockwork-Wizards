@@ -1,5 +1,29 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-05-27 - Evening Update: Image Placeholder Fix
+
+### Fixed
+- **SEO Preservation**: Posts without images now stay live with fun placeholder
+  - Removed image filtering from WordPress import logic
+  - All posts kept regardless of image availability (SEO > perfect images)
+  - Added nerdy "Image Coming Soon" placeholder for missing images
+  - Placeholder applied at API response time (clean database, easy to identify missing images)
+
+### Added
+- `lib/placeholders.ts` - Image placeholder utility functions
+- Fun, on-brand placeholder: "🤓 Nerdy Mug Image Coming Soon!"
+- Placeholder logic in all product API endpoints:
+  - `/api/products/recent`
+  - `/api/products/latest`
+  - `/api/products/trending`
+
+### Impact
+- **More SEO value**: All content pages stay indexed by Google
+- **Better UX**: No broken images, professional placeholder shown
+- **Easy maintenance**: Database tracks `null` images for future manual fixes
+
+---
+
 ## 2026-05-27 - WordPress Import & Affiliate Link Repair
 
 ### Added
