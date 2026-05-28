@@ -1,8 +1,25 @@
-# Restore All WP Posts Commands
+# Fix Broken Images Workflow
 
-## Step 1: Restore all rejected posts
+## The Problem
 
-Run this once Vercel deploy completes (~30 seconds):
+Posts with images from `nerdymugs.com/wp-content/uploads/` have broken images (old WP site is down).
+
+## The Solution
+
+**Step 1: Mark posts with broken images**
+
+Run this once Vercel deploy completes (~30 seconds from push):
+
+```bash
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/mark-broken-images" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -d '{"dryRun": false}'
+```
+
+This marks all WP posts with broken `nerdymugs.com` images as `status: "needs_image"`.
+These posts stay in the DB but won't show in the frontend.
+
+**Step 2: Restore all other WP posts**
 
 ```bash
 curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/restore-all-posts" \
@@ -10,39 +27,38 @@ curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/restore-all-post
   -d '{"dryRun": false}'
 ```
 
-## What this does:
+This restores the remaining WP posts (those with good images or Amazon images) to `status: "ready"`.
 
-- Changes all 47 `rejected` WP posts → `ready` status
-- Posts now show in `/api/posts/ready` endpoint
-- Posts are still filtered by image availability in frontend
+**Step 3: Verify**
 
-## After restore:
+```bash
+curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=10" | jq '.posts[].title'
+```
 
-1. Refresh NerdyMugs site
-2. Grid will show ALL posts with images (WP + new Amazon)
-3. Click card → goes to detail page (SEO!)
-4. Detail page has "View on Amazon" CTA button
+Should show titles of posts with working images only.
 
-## 301 Redirects
+## What's Fixed
+
+- ✅ `/api/posts/ready` now filters by:
+  - Status = `ready` or `published` (not `rejected`, `needs_image`, etc.)
+  - Product has non-null image_url
+  - Image URL is NOT from `nerdymugs.com/wp-content` (broken)
+
+- ✅ Frontend grid will only show posts that actually have loadable images
+
+## Future: If you ever fix the images
+
+Run this to restore posts marked as `needs_image`:
+
+```bash
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/restore-all-posts" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -d '{"dryRun": false}'
+```
+
+(The restore route now also handles `needs_image` status.)
+
+## 301 Redirects (unchanged)
 
 Legacy WP URLs now 301 redirect:
 - `https://app-liart-five-43.vercel.app/api/redirect?path=/comics/iron-man-mug/` → `/comics/iron-man-mug`
-
-For nerdymugs.com domain, configure:
-```nginx
-/comics/(.*)/ 301 → /comics/$1
-/star-trek/(.*)/ 301 → /star-trek/$1
-```
-
-## What's different now:
-
-**Before:**
-- Card click → direct to Amazon (no SEO)
-- 47 posts rejected/hidden
-- Complex admin UI
-
-**After:**
-- Card click → detail page (SEO indexed)
-- "View on Amazon" CTA button
-- All posts visible (with images)
-- Simple, clean frontend
