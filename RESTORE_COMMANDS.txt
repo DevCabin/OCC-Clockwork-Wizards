@@ -1,0 +1,48 @@
+# Restore All WP Posts Commands
+
+## Step 1: Restore all rejected posts
+
+Run this once Vercel deploy completes (~30 seconds):
+
+```bash
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/restore-all-posts" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -d '{"dryRun": false}'
+```
+
+## What this does:
+
+- Changes all 47 `rejected` WP posts → `ready` status
+- Posts now show in `/api/posts/ready` endpoint
+- Posts are still filtered by image availability in frontend
+
+## After restore:
+
+1. Refresh NerdyMugs site
+2. Grid will show ALL posts with images (WP + new Amazon)
+3. Click card → goes to detail page (SEO!)
+4. Detail page has "View on Amazon" CTA button
+
+## 301 Redirects
+
+Legacy WP URLs now 301 redirect:
+- `https://app-liart-five-43.vercel.app/api/redirect?path=/comics/iron-man-mug/` → `/comics/iron-man-mug`
+
+For nerdymugs.com domain, configure:
+```nginx
+/comics/(.*)/ 301 → /comics/$1
+/star-trek/(.*)/ 301 → /star-trek/$1
+```
+
+## What's different now:
+
+**Before:**
+- Card click → direct to Amazon (no SEO)
+- 47 posts rejected/hidden
+- Complex admin UI
+
+**After:**
+- Card click → detail page (SEO indexed)
+- "View on Amazon" CTA button
+- All posts visible (with images)
+- Simple, clean frontend
