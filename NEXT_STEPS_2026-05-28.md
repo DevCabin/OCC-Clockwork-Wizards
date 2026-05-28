@@ -19,24 +19,6 @@
 ---
 
 ## 🔄 User Action Required
-
-**Affiliate tag:** `georgwebsi-20`  
-**Fallback Amazon search base:** `https://www.amazon.com/s?k=TITLE_URL_ENCODED&tag=georgwebsi-20`
-
----
-
-## Context
-
-- 149 legacy WordPress posts are imported and live in Supabase
-- 56 have working Amazon affiliate links (already correct)
-- The rest still link to `nerdymugs.com` (bad)
-- Posts with no image show a placeholder AND link to nerdymugs.com (doubly bad)
-
----
-
-## Step 1 — Pull local up to date
-
-```bash
 cd /Users/george/GITHUB/OCC-Clockwork-Wizards
 git pull origin main
 ```
@@ -123,10 +105,36 @@ Check the live NerdyMugs app:
 ## After this session: What's next
 
 Once WP cleanup is done, the path forward is:
-1. Build MVP frontend in NerdyMugs-The-Machine that consumes the OCC API
+1. **CRITICAL - SEO**: Build individual product detail pages (slug-based URLs) with:
+   - Full product description, image gallery
+   - SEO meta tags (title, description, Open Graph)
+   - CTA button to Amazon (not direct click-to-Amazon on cards)
+   - Click on card → goes to detail page → CTA goes to Amazon
 2. Set up domain/DNS to point nerdymugs.com at the new Vercel app
 3. Shut down the WP site
 4. Move on to Phase 3 of the Weekly Inventory Redesign Plan (batch inventory job)
+
+### SEO Architecture Required
+**Current:** Card click → directly to Amazon (loses SEO value, no indexed pages)
+**Required:** Card click → `/product/{slug}` page → "Buy on Amazon" CTA button
+
+**Each product page needs:**
+- Unique URL: `/product/{slug}` (e.g., `/product/iron-man-ceramic-mug`)
+- Title tag: Product name + site name
+- Meta description: AI-generated excerpt
+- Open Graph tags for social sharing
+- H1 with product title
+- Product image (primary)
+- Full description/body content
+- Price (if available)
+- **CTA Button**: "View on Amazon" with affiliate link
+- Related products section (optional)
+
+**Implementation:**
+- Create `ProductDetail.tsx` component
+- Add route handling in App.tsx for `/product/:slug`
+- Update `ProductCard.tsx` to link to detail page instead of Amazon
+- Use existing `GET /api/posts/[slug]` endpoint to fetch product data
 
 ---
 
