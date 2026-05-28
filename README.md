@@ -32,7 +32,9 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `GET` | `/api/posts/ready` | None | Ready-to-publish inventory posts |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
 | `POST` | `/api/jobs/daily-posts` | Bearer token | Trigger post generation |
-| `POST` | `/api/jobs/import-wordpress` | Bearer token | Import legacy WordPress archive records into OCC |
+| `POST` | `/api/jobs/import-wordpress` | Bearer token | Import legacy WordPress archive records |
+| `POST` | `/api/jobs/hide-no-image-posts` | Bearer token | Hide WP posts with no product image (mark needs_review) |
+| `POST` | `/api/jobs/repair-affiliate-links` | Bearer token | Fix nerdymugs.com links → Amazon with fallback |
 | `POST` | `/api/posts/mark-published` | Bearer token | Mark a post as published by `id` or `slug` |
 
 Query param: `?limit=N` (max 100) on all GET endpoints.
