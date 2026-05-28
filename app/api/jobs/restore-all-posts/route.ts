@@ -21,12 +21,12 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseClient();
 
-    // Find ALL rejected WP posts
+    // Find ALL rejected or needs_image WP posts
     const { data: posts, error } = await supabase
       .from("posts")
       .select("id, title, slug, status, legacy_source_path, rule_name")
       .eq("content_source", "wordpress-import")
-      .eq("status", "rejected");
+      .in("status", ["rejected", "needs_image"]);
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
