@@ -1,0 +1,126 @@
+# Next Steps — 2026-05-28
+
+**Session goal:** Clean up imported WordPress posts so the NerdyMugs site is ready to replace the WP site.
+
+**Affiliate tag:** `georgwebsi-20`  
+**Fallback Amazon search base:** `https://www.amazon.com/s?k=TITLE_URL_ENCODED&tag=georgwebsi-20`
+
+---
+
+## Context
+
+- 149 legacy WordPress posts are imported and live in Supabase
+- 56 have working Amazon affiliate links (already correct)
+- The rest still link to `nerdymugs.com` (bad)
+- Posts with no image show a placeholder AND link to nerdymugs.com (doubly bad)
+
+---
+
+## Step 1 — Pull local up to date
+
+```bash
+cd /Users/george/GITHUB/OCC-Clockwork-Wizards
+git pull origin main
+```
+
+New files pulled in:
+- `app/api/jobs/import-wordpress/route.ts`
+- `app/api/jobs/repair-affiliate-links/route.ts`
+- `lib/amazon-url-mappings.json`
+- `lib/placeholders.ts`
+- Several new MD docs
+
+---
+
+## Step 2 — Build: `POST /api/jobs/hide-no-image-posts`
+
+**New route:** `app/api/jobs/hide-no-image-posts/route.ts`
+
+**Logic:**
+1. Authenticate with `CRON_SECRET` Bearer token
+2. Query all posts WHERE `content_source = 'wordpress-import'` AND (`image_url IS NULL` OR `image_url = ''`)
+3. Also check linked product `image_url` via join
+4. Mark matching posts: `status = 'needs_review'`
+5. Return summary count
+
+**Why `needs_review` not deleted:** Posts stay in DB for potential future image backfill. They simply stop showing in the published/ready feeds.
+
+---
+
+## Step 3 — Enhance: `POST /api/jobs/repair-affiliate-links`
+
+**Existing route already handles:** Posts with a title match in `lib/amazon-url-mappings.json` → updates to the stored Amazon URL.
+
+**What needs to be added — the fallback:**
+For posts that still point to `nerdymugs.com` AND have NO match in the mappings file:
+- Generate: `https://www.amazon.com/s?k=TITLE_URL_ENCODED&tag=georgwebsi-20`
+- Where `TITLE_URL_ENCODED` = `encodeURIComponent(post.title.trim())`
+- Update `posts.product_url` + `products.product_url` with this fallback
+- Log these as `repairedWithFallback` in the response summary
+
+**Rule:** After this job, NO post should have a `nerdymugs.com` link. Zero exceptions.
+
+---
+
+## Step 4 — Commit & push both changes
+
+Small commit message:
+```
+feat: hide no-image posts + fallback amazon search links for all wp imports
+```
+
+Update `CHANGELOG.md` with these changes.
+
+---
+
+## Step 5 — Trigger both jobs live on Vercel
+
+```bash
+CRON_SECRET=$(grep '^CRON_SECRET=' .env | cut -d '=' -f2-)
+
+# Step 1: Hide no-image posts
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/hide-no-image-posts" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": false}'
+
+# Step 2: Fix all remaining links (with fallback)
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/repair-affiliate-links" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": false}'
+```
+
+---
+
+## Step 6 — Verify
+
+Check the live NerdyMugs app:
+- No more "NERDY MUG | Image Coming Soon" placeholders visible (those posts hidden)
+- All remaining product links go to `amazon.com` (never `nerdymugs.com`)
+- Spot-check 3–5 links manually
+
+---
+
+## After this session: What's next
+
+Once WP cleanup is done, the path forward is:
+1. Build MVP frontend in NerdyMugs-The-Machine that consumes the OCC API
+2. Set up domain/DNS to point nerdymugs.com at the new Vercel app
+3. Shut down the WP site
+4. Move on to Phase 3 of the Weekly Inventory Redesign Plan (batch inventory job)
+
+---
+
+## Key facts for reconnection
+
+| Thing | Value |
+|---|---|
+| Live API base | `https://app-liart-five-43.vercel.app` |
+| Affiliate tag | `georgwebsi-20` |
+| Fallback URL pattern | `https://www.amazon.com/s?k={encoded_title}&tag=georgwebsi-20` |
+| Posts table field for hiding | `status = 'needs_review'` |
+| WP import identifier | `content_source = 'wordpress-import'` |
+| Posts with no image | query: `image_url IS NULL OR image_url = ''` on joined product |
+| Existing repair route | `app/api/jobs/repair-affiliate-links/route.ts` |
+| New route to build | `app/api/jobs/hide-no-image-posts/route.ts` |

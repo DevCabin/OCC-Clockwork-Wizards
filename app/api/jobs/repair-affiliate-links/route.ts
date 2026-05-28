@@ -4,6 +4,8 @@ import { getSupabaseClient } from "@/lib/supabase";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
+const AFFILIATE_TAG = "georgwebsi-20";
+
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -23,13 +25,13 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseClient();
 
     // Step 1: Load source data from local mapping file
-    const sourceData = require('@/lib/amazon-url-mappings.json');
+    const sourceData = require("@/lib/amazon-url-mappings.json");
 
     // Step 2: Query all legacy WordPress posts
     const { data: posts, error } = await supabase
-      .from('posts')
-      .select('id, title, slug, product_url, content_source, product_id')
-      .eq('content_source', 'wordpress-import');
+      .from("posts")
+      .select("id, title, slug, product_url, content_source, product_id")
+      .eq("content_source", "wordpress-import");
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -46,44 +48,63 @@ export async function POST(req: NextRequest) {
 
     // Step 4: Identify posts that need repair
     const needsRepair = [];
+    const repairedWithFallback = [];
     const alreadyGood = [];
-    const noSourceUrl = [];
+    const noSourceUrl = []; // Posts without nerdymugs.com link (shouldn't happen often)
 
     for (const post of posts) {
       const normalizedTitle = post.title.trim().toLowerCase();
       const sourceUrl = sourceMap.get(normalizedTitle);
 
-      if (post.product_url && post.product_url.includes('nerdymugs.com')) {
-        if (sourceUrl && sourceUrl.includes('amazon')) {
+      if (post.product_url && post.product_url.includes("nerdymugs.com")) {
+        if (sourceUrl && sourceUrl.includes("amazon")) {
+          // Found a proper Amazon URL in the mapping file
           needsRepair.push({
             id: post.id,
             title: post.title,
             slug: post.slug,
             currentUrl: post.product_url,
             newUrl: sourceUrl,
-            product_id: post.product_id
+            product_id: post.product_id,
           });
         } else {
-          noSourceUrl.push({
+          // No proper Amazon URL found — use fallback search URL
+          const titleEncoded = encodeURIComponent(post.title.trim());
+          const fallbackUrl = `https://www.amazon.com/s?k=${titleEncoded}&tag=${AFFILIATE_TAG}`;
+
+          repairedWithFallback.push({
+            id: post.id,
             title: post.title,
-            currentUrl: post.product_url
+            slug: post.slug,
+            currentUrl: post.product_url,
+            newUrl: fallbackUrl,
+            product_id: post.product_id,
           });
         }
-      } else if (post.product_url && post.product_url.includes('amazon')) {
+      } else if (post.product_url && post.product_url.includes("amazon")) {
         alreadyGood.push(post.title);
+      } else {
+        // Not nerdymugs.com and not amazon.com
+        noSourceUrl.push({
+          title: post.title,
+          currentUrl: post.product_url,
+        });
       }
     }
 
     // Step 5: Execute repairs
     let successCount = 0;
+    let fallbackSuccessCount = 0;
     let failCount = 0;
+    let fallbackFailCount = 0;
 
-    if (!dryRun && needsRepair.length > 0) {
+    if (!dryRun && (needsRepair.length > 0 || repairedWithFallback.length > 0)) {
+      // Repair from mappings file
       for (const repair of needsRepair) {
         const { error: postError } = await supabase
-          .from('posts')
+          .from("posts")
           .update({ product_url: repair.newUrl })
-          .eq('id', repair.id);
+          .eq("id", repair.id);
 
         if (postError) {
           failCount++;
@@ -92,12 +113,34 @@ export async function POST(req: NextRequest) {
 
         if (repair.product_id) {
           await supabase
-            .from('products')
+            .from("products")
             .update({ product_url: repair.newUrl })
-            .eq('id', repair.product_id);
+            .eq("id", repair.product_id);
         }
 
         successCount++;
+      }
+
+      // Repair with fallback Amazon search URLs
+      for (const repair of repairedWithFallback) {
+        const { error: postError } = await supabase
+          .from("posts")
+          .update({ product_url: repair.newUrl })
+          .eq("id", repair.id);
+
+        if (postError) {
+          fallbackFailCount++;
+          continue;
+        }
+
+        if (repair.product_id) {
+          await supabase
+            .from("products")
+            .update({ product_url: repair.newUrl })
+            .eq("id", repair.product_id);
+        }
+
+        fallbackSuccessCount++;
       }
     }
 
@@ -107,21 +150,25 @@ export async function POST(req: NextRequest) {
       summary: {
         totalPosts: posts.length,
         alreadyGood: alreadyGood.length,
-        wouldRepair: needsRepair.length,
-        actuallyRepaired: dryRun ? 0 : successCount,
-        failed: failCount,
-        needsManual: noSourceUrl.length
+        repairedFromMapping: dryRun ? needsRepair.length : successCount,
+        repairedWithFallback: dryRun ? repairedWithFallback.length : fallbackSuccessCount,
+        failed: failCount + fallbackFailCount,
+        totalBadPosts: needsRepair.length + repairedWithFallback.length,
       },
       examples: {
-        repaired: needsRepair.slice(0, 5).map(r => ({
+        repairedFromMapping: needsRepair.slice(0, 5).map((r) => ({
           title: r.title,
           from: r.currentUrl,
-          to: r.newUrl
+          to: r.newUrl,
         })),
-        needsManual: noSourceUrl.slice(0, 5)
-      }
+        repairedWithFallback: repairedWithFallback.slice(0, 5).map((r) => ({
+          title: r.title,
+          from: r.currentUrl,
+          to: r.newUrl,
+        })),
+        other: noSourceUrl.slice(0, 3),
+      },
     });
-
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : String(error) },

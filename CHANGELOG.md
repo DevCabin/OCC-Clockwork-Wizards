@@ -1,5 +1,27 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-05-28 - WP Cleanup: Hide Imageless Posts + Fallback Amazon Links
+
+### Changes
+- **New API Route**: `POST /api/jobs/hide-no-image-posts`
+  - Finds all WordPress-imported posts where the linked product has no image
+  - Marks them `status = 'needs_review'` so they stop appearing in feeds (not deleted)
+  - Also sets their product URLs to Amazon search with affiliate tag `georgwebsi-20`
+  - Goal: Stop showing placeholder-only posts to users
+- **Enhanced API Route**: `POST /api/jobs/repair-affiliate-links`
+  - Added fallback mechanism: if a post has no match in `amazon-url-mappings.json`,
+    it now generates `https://www.amazon.com/s?k=ENCODED_TITLE&tag=georgwebsi-20`
+  - Result: ZERO posts should link to `nerdymugs.com` after running this job
+- **Type Update**: Added `needs_review` to valid `PostStatus` enum
+- **Affiliate Tag Confirmed**: `georgwebsi-20` used for all Amazon search links
+
+### Impact
+- No more `nerdymugs.com` product links in the live app
+- Posts without images are hidden from public view but preserved in DB
+- All remaining visible posts have either:
+  - Proper Amazon product URLs (from mappings file), OR
+  - Amazon search URLs (fallback that still carries affiliate tag)
+
 ## 2026-05-27 - Evening Update: Image Placeholder Fix
 
 ### Fixed

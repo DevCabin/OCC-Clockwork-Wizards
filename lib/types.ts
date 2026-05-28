@@ -36,5 +36,5 @@ export const openAiPostSchema = z.object({
 
 export type GeneratedPost = z.infer<typeof openAiPostSchema>;
 
-export const postStatusSchema = z.enum(["ready", "published", "rejected"]);
+export const postStatusSchema = z.enum(["ready", "published", "rejected", "needs_review"]);
 export type PostStatus = z.infer<typeof postStatusSchema>;
