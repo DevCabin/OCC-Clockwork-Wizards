@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseClient();
 
-    // Find all WP posts where product image is from old WP site
+    // Find ALL WP posts (ready, published, OR rejected) where product image is from old WP site
     const { data: posts, error } = await supabase
       .from("posts")
       .select(`
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
         products(image_url)
       `)
       .eq("content_source", "wordpress-import")
-      .in("status", ["ready", "published"]);
+      .in("status", ["ready", "published", "rejected"]);
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
