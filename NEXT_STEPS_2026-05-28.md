@@ -1,6 +1,24 @@
 # Next Steps — 2026-05-28
 
+**Status:** ✅ COMPLETE — Code deployed, docs updated, ready for user to run jobs
+
 **Session goal:** Clean up imported WordPress posts so the NerdyMugs site is ready to replace the WP site.
+
+---
+
+## ✅ Completed
+
+- [x] Built `POST /api/jobs/hide-no-image-posts` route
+- [x] Enhanced `POST /api/jobs/repair-affiliate-links` with fallback Amazon URLs
+- [x] Added `needs_review` status to PostStatus enum
+- [x] Committed to GitHub and deployed to Vercel
+- [x] Updated CHANGELOG.md
+- [x] Updated README.md with new routes
+- [x] Added RUN_JOBS_COMMANDS.txt helper script
+
+---
+
+## 🔄 User Action Required
 
 **Affiliate tag:** `georgwebsi-20`  
 **Fallback Amazon search base:** `https://www.amazon.com/s?k=TITLE_URL_ENCODED&tag=georgwebsi-20`
