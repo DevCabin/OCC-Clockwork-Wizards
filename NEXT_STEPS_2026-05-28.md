@@ -1,12 +1,49 @@
 # Next Steps — 2026-05-28
 
-**Status:** ✅ COMPLETE — Code deployed, docs updated, ready for user to run jobs
+**Status:** ✅ LIVE APP PROGRESS — Grid loads posts; detail endpoint CORS fixed; ready for user flow testing
 
-**Session goal:** Clean up imported WordPress posts so the NerdyMugs site is ready to replace the WP site.
+**Session goal:** Get the NerdyMugs live frontend showing OCC posts and route card clicks to an individual detail view with an Amazon CTA.
 
 ---
 
-## ✅ Completed
+## ✅ Latest Completed
+
+- [x] Frontend stale CDN bundle fixed with Vite cache-busting transform (`?v=2.2`)
+- [x] Frontend now loads NerdyMugs branding from live Vercel
+- [x] Frontend posts grid fetches `/api/posts/ready?limit=100`
+- [x] Frontend CORS preflight bug fixed by removing custom request headers
+- [x] Frontend handles `products` as either object or array for image rendering
+- [x] Backend `/api/posts/[slug]` now returns CORS headers and supports `OPTIONS`
+- [x] Live detail endpoint verified with CORS headers
+- [x] Package versions bumped:
+  - OCC backend: `1.0.2`
+  - NerdyMugs frontend: `2.3.3`
+
+---
+
+## 🔄 Current User Test
+
+Check the live frontend:
+
+```text
+https://nerdymugs-the-machine.vercel.app
+```
+
+Expected flow:
+
+1. Grid loads posts.
+2. Click a card.
+3. Individual detail view loads post content.
+4. `View on Amazon` CTA opens the Amazon product/search URL.
+
+Notes:
+
+- Missing images lower in the grid are acceptable for now.
+- The current detail view is SPA state, not direct SEO slug routing yet.
+
+---
+
+## Previously Completed WP Cleanup
 
 - [x] Built `POST /api/jobs/hide-no-image-posts` route
 - [x] Enhanced `POST /api/jobs/repair-affiliate-links` with fallback Amazon URLs
@@ -18,7 +55,7 @@
 
 ---
 
-## 🔄 User Action Required
+## Previous User Action Required
 cd /Users/george/GITHUB/OCC-Clockwork-Wizards
 git pull origin main
 ```

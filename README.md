@@ -1,7 +1,8 @@
 # OCC Clockwork Wizards — V1 API Pipeline
 
-**Live base URL:** `https://app-liart-five-43.vercel.app`  
-**GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`  
+**Version:** `1.0.2`
+**Live base URL:** `https://app-liart-five-43.vercel.app`
+**GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`
 **Stack:** Next.js 14 (App Router) · TypeScript · Supabase · Firecrawl · OpenAI · Vercel
 
 ---
@@ -30,6 +31,7 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `GET` | `/api/products/recent` | None | Recent products (default 21) |
 | `GET` | `/api/posts/recent` | None | AI-generated posts (default 21) |
 | `GET` | `/api/posts/ready` | None | Ready-to-publish inventory posts |
+| `GET` | `/api/posts/[slug]` | None | Individual post detail payload with CORS |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
 | `POST` | `/api/jobs/daily-posts` | Bearer token | Trigger post generation |
 | `POST` | `/api/jobs/import-wordpress` | Bearer token | Import legacy WordPress archive records |
@@ -105,6 +107,7 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 | Recent products (21) | [/api/products/recent](https://app-liart-five-43.vercel.app/api/products/recent) |
 | Recent posts (21) | [/api/posts/recent](https://app-liart-five-43.vercel.app/api/posts/recent) |
 | Ready posts (21) | [/api/posts/ready](https://app-liart-five-43.vercel.app/api/posts/ready) |
+| Example post detail | [/api/posts/programmers-while-coding-mug-5ba1e567](https://app-liart-five-43.vercel.app/api/posts/programmers-while-coding-mug-5ba1e567) |
 | Latest products — 10 | [/api/products/latest?limit=10](https://app-liart-five-43.vercel.app/api/products/latest?limit=10) |
 | Recent posts — 5 | [/api/posts/recent?limit=5](https://app-liart-five-43.vercel.app/api/posts/recent?limit=5) |
 | API index | [/](https://app-liart-five-43.vercel.app) |
@@ -135,7 +138,15 @@ curl -sS --max-time 300 -X POST "https://app-liart-five-43.vercel.app/api/jobs/i
 curl -sS "https://app-liart-five-43.vercel.app/api/products/latest?limit=3"
 curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 curl -sS "https://app-liart-five-43.vercel.app/api/posts/recent?limit=3"
+curl -sS -i "https://app-liart-five-43.vercel.app/api/posts/programmers-while-coding-mug-5ba1e567"
 ```
+
+### Public frontend integration status
+
+- NerdyMugs frontend: `https://nerdymugs-the-machine.vercel.app`
+- Current flow: grid from `/api/posts/ready` → detail fetch from `/api/posts/[slug]` → Amazon CTA from `post.product_url`
+- `ready` and slug detail endpoints both send permissive CORS headers for the frontend.
+- Missing lower-grid images are currently tolerated; link/detail correctness is the active priority.
 
 ### WordPress import behavior notes
 

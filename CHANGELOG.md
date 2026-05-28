@@ -1,5 +1,21 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-05-28 - v1.0.2: Detail Endpoint CORS + Live Frontend Integration
+
+### Fixed
+- **Post Detail CORS**: `GET /api/posts/[slug]` now returns CORS headers on success and error responses.
+- **Preflight Support**: Added `OPTIONS` handling for `/api/posts/[slug]`.
+- **Frontend Flow Unblocked**: NerdyMugs can now fetch individual post details from the live backend after a grid card click.
+
+### Verified
+- `npm run build` passes.
+- Live slug endpoint returns `Access-Control-Allow-Origin: *`.
+- Live slug endpoint returns `{ post }` JSON for generated posts.
+- Live `OPTIONS` request returns `204` with CORS headers.
+
+### Version
+- Bumped backend package version from `1.0.1` to `1.0.2`.
+
 ## 2026-05-28 - WP Cleanup: Hide Imageless Posts + Fallback Amazon Links
 
 ### Changes

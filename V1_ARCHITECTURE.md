@@ -1,7 +1,8 @@
 # V1 Architecture — OCC Clockwork Wizards Product + Post Pipeline
 
-**Live base URL:** `https://app-liart-five-43.vercel.app`  
-**GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`  
+**Version:** `1.0.2`
+**Live base URL:** `https://app-liart-five-43.vercel.app`
+**GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`
 **Stack:** Next.js 14 (App Router) · TypeScript · Supabase (Postgres) · Firecrawl API · OpenAI API · Vercel
 
 ---
@@ -71,6 +72,7 @@ GET /api/products/latest    ← served any time from Supabase
 GET /api/products/recent    ← served any time from Supabase
 GET /api/posts/recent       ← served any time from Supabase
 GET /api/posts/ready        ← ready inventory only
+GET /api/posts/[slug]       ← single post detail payload
 POST /api/posts/mark-published ← mark a post as published
 POST /api/jobs/import-wordpress ← import legacy WordPress archive rows
 ```
@@ -221,6 +223,14 @@ Flow:
 ### `app/api/posts/ready/route.ts`
 
 `GET /api/posts/ready` — returns only posts whose lifecycle `status = 'ready'`. Default limit: `21`, max `100`.
+
+---
+
+### `app/api/posts/[slug]/route.ts`
+
+`GET /api/posts/[slug]` — returns one post detail payload as `{ post }`, including product image and description through the joined `products` row.
+
+This endpoint sends permissive CORS headers and supports `OPTIONS` so the NerdyMugs frontend can load detail pages from the separate Vercel app.
 
 ---
 
