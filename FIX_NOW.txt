@@ -1,0 +1,29 @@
+# IMMEDIATE FIX — Run This Now
+
+Your site still shows placeholder cards because the 8 no-image posts
+are marked "needs_review" but your frontend shows ALL posts.
+
+Run this to reject those posts completely (they'll vanish from feeds):
+
+```bash
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/reject-hidden-posts" \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": false}'
+```
+
+Then refresh your site — the placeholder cards should be gone.
+
+---
+
+# NOTE FOR LATER — Scalability
+
+Current setup: Frontend shows ALL posts, backend hides bad ones by status.
+Better setup: Frontend should ONLY fetch posts with status="published".
+
+To fix properly later:
+1. Update NerdyMugs frontend to use `/api/posts/ready` (not `/api/posts/recent`)
+2. Or add `?status=published` filter to frontend fetch
+3. Then you can use "needs_review" again instead of "rejected"
+
+For now: "rejected" works as immediate fix.
