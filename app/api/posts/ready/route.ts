@@ -35,5 +35,16 @@ export async function GET(req: NextRequest) {
     return true;
   });
 
-  return NextResponse.json({ posts: validPosts });
+  // Cache-busting headers
+  return NextResponse.json(
+    { posts: validPosts, _cache: Date.now() },
+    {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+        'CDN-Cache-Control': 'no-store',
+        'Vercel-CDN-Cache-Control': 'no-store',
+        'Pragma': 'no-cache',
+      }
+    }
+  );
 }
