@@ -3,6 +3,13 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
+// CORS headers for cross-origin requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 export async function GET(req: NextRequest) {
   const supabase = getSupabaseClient();
   const { searchParams } = new URL(req.url);
@@ -22,14 +29,15 @@ export async function GET(req: NextRequest) {
     .limit(limit);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
   }
 
-  // Cache-busting headers
+  // Response with CORS headers
   return NextResponse.json(
     { posts: data ?? [], _cache: Date.now() },
     {
       headers: {
+        ...corsHeaders,
         'Cache-Control': 'no-store, max-age=0, must-revalidate',
         'CDN-Cache-Control': 'no-store',
         'Vercel-CDN-Cache-Control': 'no-store',
