@@ -1,6 +1,6 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-28 7:04 PM CDT
+## Last Updated: 2026-05-28 7:22 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
@@ -25,12 +25,14 @@ Build a working coffee mug affiliate website with:
 - CORS headers active: `access-control-allow-origin: *`
 
 ### Frontend (NerdyMugs-The-Machine) ✅
-- Version: `2.3.6`
+- Version: `2.3.7`
 - Live frontend now serves NerdyMugs bundle with cache-busting query string
 - Grid loads posts from `/api/posts/ready?limit=100`
 - Cards are real links and open clean detail URLs
 - Legacy posts use preserved paths like `/comics/iron-man-ceramic-mug-no-handle-12-ounces`
 - Generated posts use `/mugs/{slug}`
+- Production builds generate static HTML for clean post URLs with per-post title, description, canonical, Open Graph, Twitter card, JSON-LD, and fallback article content
+- Production builds emit `sitemap.xml` and `robots.txt`
 - Detail view fetches `/api/posts/[slug]`
 - Browser back and `Back to all posts` return from detail view to grid
 - Detail CTA links to Amazon through `post.product_url` with `tag=georgwebsi-20`
@@ -46,6 +48,7 @@ Build a working coffee mug affiliate website with:
 - Frontend Amazon links now force associate tag `georgwebsi-20`
 - Frontend clean permalink routing added for `/{category}/{post-title}` paths
 - Vercel rewrite fallback added so direct clean URL visits load the SPA
+- Frontend static post HTML generation added for real per-post SEO metadata
 
 ## Repositories
 - **OCC-Clockwork-Wizards**: `/Users/george/GITHUB/OCC-Clockwork-Wizards`
@@ -81,15 +84,16 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 ```
 
 ## Next Steps (To Complete)
-1. User live-test full flow: grid → clean detail URL → back to grid → Amazon CTA
+1. User live-test full flow: grid → static clean detail URL → back to grid → Amazon CTA
 2. Spot-check several Amazon CTAs for `tag=georgwebsi-20`
-3. Defer missing image cleanup unless it blocks launch quality
-4. Later SEO upgrade: server-rendered/static post pages with per-post metadata
+3. Inspect live post source for per-post metadata and fallback article content
+4. Defer missing image cleanup unless it blocks launch quality
 
 ## Key Files to Modify
 - `NerdyMugs-The-Machine/app/src/App.tsx` - Grid fetch + SPA detail state
 - `NerdyMugs-The-Machine/app/src/components/ProductCard.tsx` - Card image rendering and click target
 - `NerdyMugs-The-Machine/app/src/components/PostDetail.tsx` - Detail fetch + Amazon CTA
+- `NerdyMugs-The-Machine/app/scripts/generate-static-pages.mjs` - Static post HTML, sitemap, and robots generation
 - `NerdyMugs-The-Machine/app/vite.config.ts` - Cache-busting transform
 - `NerdyMugs-The-Machine/app/vercel.json` - SPA rewrite for clean post paths
 - `OCC-Clockwork-Wizards/app/api/posts/[slug]/route.ts` - Detail endpoint with CORS
@@ -99,4 +103,5 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 - All 151 posts are ready in database
 - Frontend and backend are live/Vercel-first; no local dev server workflow needed
 - Missing images are not the current priority
-- Current clean URLs are SPA-rendered; true per-page SEO metadata still requires SSR/SSG later
+- Clean URLs now have generated static HTML for the ready posts returned during build
+- Vercel fallback still covers paths that do not have generated static HTML

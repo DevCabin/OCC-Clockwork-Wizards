@@ -19,9 +19,11 @@
 - [x] Frontend Amazon URLs now force associate tag `georgwebsi-20`
 - [x] Frontend cards now link to clean `/{category}/{post-title}` URLs
 - [x] Vercel rewrite fallback added for direct clean URL visits
+- [x] Frontend build now generates static post HTML with per-post metadata
+- [x] Frontend build now emits `sitemap.xml` and `robots.txt`
 - [x] Package versions bumped:
   - OCC backend: `1.0.2`
-  - NerdyMugs frontend: `2.3.6`
+  - NerdyMugs frontend: `2.3.7`
 
 ---
 
@@ -38,14 +40,16 @@ Expected flow:
 1. Grid loads posts.
 2. Click a card.
 3. URL changes to a clean category/slug path.
-4. Individual detail view loads post content.
-5. Browser back or `Back to all posts` returns to the grid.
-6. `View on Amazon` CTA opens the Amazon product/search URL with `tag=georgwebsi-20`.
+4. Direct page source includes post-specific title, description, canonical, social metadata, JSON-LD, and fallback article content.
+5. Individual detail view loads post content after React hydration.
+6. Browser back or `Back to all posts` returns to the grid.
+7. `View on Amazon` CTA opens the Amazon product/search URL with `tag=georgwebsi-20`.
 
 Notes:
 
 - Missing images lower in the grid are acceptable for now.
-- Clean URLs now work, but true per-post meta tags still require a future SSR/SSG upgrade.
+- Clean URLs now have generated static HTML for build-time ready posts.
+- Vercel fallback still covers paths that do not have generated static HTML.
 
 ---
 
