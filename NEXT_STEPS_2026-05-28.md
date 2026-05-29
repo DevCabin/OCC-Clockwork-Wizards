@@ -24,9 +24,11 @@
 - [x] Backend `/api/posts/ready` max limit raised from 100 to 250 for static SEO builds
 - [x] Frontend logo/brand now links back to the homepage
 - [x] Frontend post body copy now formats into readable sections and feature lists
+- [x] Legacy standalone pages recreated at original URLs
+- [x] Static build now supports `NERDYMUGS_SITE_URL` for custom-domain cutover
 - [x] Package versions bumped:
   - OCC backend: `1.0.3`
-  - NerdyMugs frontend: `2.3.9`
+  - NerdyMugs frontend: `2.3.10`
 
 ---
 

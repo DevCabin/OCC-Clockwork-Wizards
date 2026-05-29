@@ -1,6 +1,6 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-28 8:01 PM CDT
+## Last Updated: 2026-05-28 8:30 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
@@ -26,7 +26,7 @@ Build a working coffee mug affiliate website with:
 - CORS headers active: `access-control-allow-origin: *`
 
 ### Frontend (NerdyMugs-The-Machine) ✅
-- Version: `2.3.9`
+- Version: `2.3.10`
 - Live frontend now serves NerdyMugs bundle with cache-busting query string
 - Grid loads posts from `/api/posts/ready?limit=100`
 - Cards are real links and open clean detail URLs
@@ -35,6 +35,8 @@ Build a working coffee mug affiliate website with:
 - Production builds generate static HTML for clean post URLs with per-post title, description, canonical, Open Graph, Twitter card, JSON-LD, and fallback article content
 - Production builds emit `sitemap.xml` and `robots.txt`
 - Post body copy is formatted into readable paragraphs, section headings, feature lists, and note-style `P.S.` blocks
+- Legacy standalone pages now exist at their original URLs, including `/about-nerdy-mugs/` and `/random-mugs/`
+- Static generator supports `NERDYMUGS_SITE_URL` so canonicals, sitemap, and robots can switch cleanly during domain cutover
 - Detail view fetches `/api/posts/[slug]`
 - Header logo/brand links back to the homepage
 - Browser back and `Back to all posts` return from detail view to grid
@@ -55,6 +57,8 @@ Build a working coffee mug affiliate website with:
 - Backend ready feed limit increased so static SEO builds can cover the full ready inventory
 - Frontend logo/brand home link added
 - Frontend post body formatter added for better readability in live and static pages
+- Frontend legacy standalone pages recreated in the new simple site style
+- Frontend build can now target the final custom domain for generated SEO metadata
 
 ## Repositories
 - **OCC-Clockwork-Wizards**: `/Users/george/GITHUB/OCC-Clockwork-Wizards`
