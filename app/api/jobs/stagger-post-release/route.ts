@@ -5,7 +5,7 @@ import { isAuthorizedCronRequest } from "@/lib/publicPosts";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_LIVE_COUNT = 30;
-const DEFAULT_SPACING_DAYS = 3;
+const DEFAULT_SPACING_DAYS = 1;
 const DEFAULT_START_DATE = "2026-05-31T12:00:00.000Z";
 
 function addDays(baseDate: Date, days: number): Date {
