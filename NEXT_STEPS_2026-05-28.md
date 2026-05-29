@@ -17,9 +17,11 @@
 - [x] Live detail endpoint verified with CORS headers
 - [x] Frontend browser back and `Back to all posts` behavior fixed
 - [x] Frontend Amazon URLs now force associate tag `georgwebsi-20`
+- [x] Frontend cards now link to clean `/{category}/{post-title}` URLs
+- [x] Vercel rewrite fallback added for direct clean URL visits
 - [x] Package versions bumped:
   - OCC backend: `1.0.2`
-  - NerdyMugs frontend: `2.3.4`
+  - NerdyMugs frontend: `2.3.6`
 
 ---
 
@@ -35,14 +37,15 @@ Expected flow:
 
 1. Grid loads posts.
 2. Click a card.
-3. Individual detail view loads post content.
-4. Browser back or `Back to all posts` returns to the grid.
-5. `View on Amazon` CTA opens the Amazon product/search URL with `tag=georgwebsi-20`.
+3. URL changes to a clean category/slug path.
+4. Individual detail view loads post content.
+5. Browser back or `Back to all posts` returns to the grid.
+6. `View on Amazon` CTA opens the Amazon product/search URL with `tag=georgwebsi-20`.
 
 Notes:
 
 - Missing images lower in the grid are acceptable for now.
-- The current detail view is SPA state, not direct SEO slug routing yet.
+- Clean URLs now work, but true per-post meta tags still require a future SSR/SSG upgrade.
 
 ---
 

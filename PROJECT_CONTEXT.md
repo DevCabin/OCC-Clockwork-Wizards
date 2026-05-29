@@ -1,6 +1,6 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-28 6:40 PM CDT
+## Last Updated: 2026-05-28 7:04 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
@@ -25,10 +25,12 @@ Build a working coffee mug affiliate website with:
 - CORS headers active: `access-control-allow-origin: *`
 
 ### Frontend (NerdyMugs-The-Machine) ✅
-- Version: `2.3.4`
+- Version: `2.3.6`
 - Live frontend now serves NerdyMugs bundle with cache-busting query string
 - Grid loads posts from `/api/posts/ready?limit=100`
-- Cards open in-app detail view
+- Cards are real links and open clean detail URLs
+- Legacy posts use preserved paths like `/comics/iron-man-ceramic-mug-no-handle-12-ounces`
+- Generated posts use `/mugs/{slug}`
 - Detail view fetches `/api/posts/[slug]`
 - Browser back and `Back to all posts` return from detail view to grid
 - Detail CTA links to Amazon through `post.product_url` with `tag=georgwebsi-20`
@@ -42,6 +44,8 @@ Build a working coffee mug affiliate website with:
 - Backend post detail CORS fixed on `/api/posts/[slug]`
 - Frontend back navigation fixed with `?post={slug}` URL state
 - Frontend Amazon links now force associate tag `georgwebsi-20`
+- Frontend clean permalink routing added for `/{category}/{post-title}` paths
+- Vercel rewrite fallback added so direct clean URL visits load the SPA
 
 ## Repositories
 - **OCC-Clockwork-Wizards**: `/Users/george/GITHUB/OCC-Clockwork-Wizards`
@@ -77,16 +81,17 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 ```
 
 ## Next Steps (To Complete)
-1. User live-test full flow: grid → detail page → back to grid → Amazon CTA
+1. User live-test full flow: grid → clean detail URL → back to grid → Amazon CTA
 2. Spot-check several Amazon CTAs for `tag=georgwebsi-20`
 3. Defer missing image cleanup unless it blocks launch quality
-4. Later SEO upgrade: real slug URLs instead of SPA-only selected detail state
+4. Later SEO upgrade: server-rendered/static post pages with per-post metadata
 
 ## Key Files to Modify
 - `NerdyMugs-The-Machine/app/src/App.tsx` - Grid fetch + SPA detail state
 - `NerdyMugs-The-Machine/app/src/components/ProductCard.tsx` - Card image rendering and click target
 - `NerdyMugs-The-Machine/app/src/components/PostDetail.tsx` - Detail fetch + Amazon CTA
 - `NerdyMugs-The-Machine/app/vite.config.ts` - Cache-busting transform
+- `NerdyMugs-The-Machine/app/vercel.json` - SPA rewrite for clean post paths
 - `OCC-Clockwork-Wizards/app/api/posts/[slug]/route.ts` - Detail endpoint with CORS
 
 ## Important Notes
@@ -94,4 +99,4 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 - All 151 posts are ready in database
 - Frontend and backend are live/Vercel-first; no local dev server workflow needed
 - Missing images are not the current priority
-- Current detail pages are SPA state, not directly routable SEO pages yet
+- Current clean URLs are SPA-rendered; true per-page SEO metadata still requires SSR/SSG later
