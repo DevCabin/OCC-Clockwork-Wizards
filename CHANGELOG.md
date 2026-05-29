@@ -1,5 +1,45 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-05-28 - v1.0.4: Public Release Controls + Junk Cleanup Jobs
+
+### Added
+- `POST /api/jobs/delete-bad-posts`
+  - Authenticated cleanup job for deleting obviously broken junk posts such as the imported `Custom Styles` / `wp-global-styles-*` records.
+- `POST /api/jobs/stagger-post-release`
+  - Authenticated scheduling job that keeps a fixed number of posts live now and assigns future `scheduled_for` dates to the rest at a configurable interval.
+- `lib/publicPosts.ts`
+  - Shared public-visibility helpers for CORS, scheduled visibility, and junk-pattern detection.
+
+### Changed
+- `GET /api/posts/ready`
+  - Now returns only publicly visible posts.
+  - A post is public when:
+    - `status` is `published`, or
+    - `status` is `ready` and `scheduled_for <= now`, or
+    - `status` is `ready` and `scheduled_for` is empty.
+- `GET /api/posts/[slug]`
+  - Now applies the same public-visibility rule as the ready feed so future scheduled posts do not leak early.
+
+### Live Operations
+- Deleted 3 junk posts:
+  - `wp-global-styles-mesa-wpex`
+  - `wp-global-styles-abisko`
+  - `wp-global-styles-twentytwentythree`
+- Applied staggered release policy:
+  - `30` posts live now
+  - `118` future posts scheduled
+  - next release date: `2026-05-31T12:00:00.000Z`
+  - cadence: one additional post every 3 days
+
+### Verified
+- `npm run build` passes.
+- Live `/api/posts/ready?limit=250` returns `30` posts after scheduling.
+- Live current slug returns `200`.
+- Live future scheduled slug returns `404`.
+
+### Version
+- Bumped backend package version from `1.0.3` to `1.0.4`.
+
 ## 2026-05-28 - v1.0.3: Larger Ready Feed for SEO Builds
 
 ### Changed

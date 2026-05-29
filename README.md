@@ -1,6 +1,6 @@
 # OCC Clockwork Wizards — V1 API Pipeline
 
-**Version:** `1.0.2`
+**Version:** `1.0.4`
 **Live base URL:** `https://app-liart-five-43.vercel.app`
 **GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`
 **Stack:** Next.js 14 (App Router) · TypeScript · Supabase · Firecrawl · OpenAI · Vercel
@@ -30,16 +30,18 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `GET` | `/api/products/latest` | None | Latest products (default 3) |
 | `GET` | `/api/products/recent` | None | Recent products (default 21) |
 | `GET` | `/api/posts/recent` | None | AI-generated posts (default 21) |
-| `GET` | `/api/posts/ready` | None | Ready-to-publish inventory posts |
-| `GET` | `/api/posts/[slug]` | None | Individual post detail payload with CORS |
+| `GET` | `/api/posts/ready` | None | Publicly visible posts only |
+| `GET` | `/api/posts/[slug]` | None | Individual public post detail payload with CORS |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
 | `POST` | `/api/jobs/daily-posts` | Bearer token | Trigger post generation |
 | `POST` | `/api/jobs/import-wordpress` | Bearer token | Import legacy WordPress archive records |
 | `POST` | `/api/jobs/hide-no-image-posts` | Bearer token | Hide WP posts with no product image (mark needs_review) |
+| `POST` | `/api/jobs/delete-bad-posts` | Bearer token | Delete broken junk posts from the live inventory |
+| `POST` | `/api/jobs/stagger-post-release` | Bearer token | Keep N posts live and schedule the rest forward |
 | `POST` | `/api/jobs/repair-affiliate-links` | Bearer token | Fix nerdymugs.com links → Amazon with fallback |
 | `POST` | `/api/posts/mark-published` | Bearer token | Mark a post as published by `id` or `slug` |
 
-Query param: `?limit=N` (max 100) on all GET endpoints.
+Query param: `?limit=N` (max 250 on `/api/posts/ready`, max 100 on `/api/posts/recent`).
 
 See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation including response shapes, database schema, and integration code examples.
 
@@ -52,7 +54,9 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 ├── app/
 │   ├── api/jobs/daily-products/    # Product discovery + scoring job
 │   ├── api/jobs/daily-posts/       # Post generation job
+│   ├── api/jobs/delete-bad-posts/  # Delete obviously broken junk posts
 │   ├── api/jobs/import-wordpress/  # Legacy WordPress archive import job
+│   ├── api/jobs/stagger-post-release/ # Schedule future post releases
 │   ├── api/products/latest/        # GET latest products
 │   ├── api/products/recent/        # GET recent products
 │   ├── api/posts/recent/           # GET recent posts
@@ -146,7 +150,49 @@ curl -sS -i "https://app-liart-five-43.vercel.app/api/posts/programmers-while-co
 - NerdyMugs frontend: `https://nerdymugs-the-machine.vercel.app`
 - Current flow: grid from `/api/posts/ready` → detail fetch from `/api/posts/[slug]` → Amazon CTA from `post.product_url`
 - `ready` and slug detail endpoints both send permissive CORS headers for the frontend.
-- Missing lower-grid images are currently tolerated; link/detail correctness is the active priority.
+- Public inventory is now intentionally throttled:
+  - `30` posts live now
+  - future posts unlock automatically every 3 days via `scheduled_for`
+- Missing lower-grid images are currently tolerated; content quality and release control are the active priorities.
+
+### Public visibility rules
+
+- A post is public when:
+  - `status = 'published'`, or
+  - `status = 'ready'` and `scheduled_for <= now`, or
+  - `status = 'ready'` and `scheduled_for` is empty
+- Future scheduled `ready` posts do not appear in `/api/posts/ready`.
+- Future scheduled `ready` posts also return `404` from `/api/posts/[slug]` until their go-live date.
+
+### Content operations guide
+
+To review and update upcoming posts, go to Supabase and use the `posts` and `products` tables.
+
+- `posts` table:
+  - edit `title`, `excerpt`, `body_md`
+  - change `status`
+  - adjust `scheduled_for` to move a post earlier or later
+  - use `legacy_source_path` if you need to preserve or repair a clean URL
+- `products` table:
+  - edit `image_url` to replace missing or broken product images
+  - edit `product_url` if you need to swap or repair the Amazon destination
+  - edit `title` / `description` if the source product data needs cleanup
+
+Helpful workflow:
+
+1. In `posts`, filter `status = ready`.
+2. Sort by `scheduled_for` ascending to see the release queue.
+3. Copy the `product_id` from a post row.
+4. Open the matching row in `products` and update `image_url` or `product_url`.
+5. Save changes and spot-check the live API:
+   - `/api/posts/recent?limit=100` shows the full recent inventory sample
+   - `/api/posts/ready?limit=250` shows only currently public posts
+
+Important:
+
+- The frontend static build only regenerates currently public post HTML and sitemap entries at deploy time.
+- Future scheduled posts still go live automatically through the SPA fallback as soon as the backend exposes them.
+- To refresh static HTML and sitemap for newly released posts, redeploy the frontend after a batch has gone live.
 
 ### WordPress import behavior notes
 

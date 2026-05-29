@@ -1,204 +1,93 @@
 # Next Steps — 2026-05-28
 
-**Status:** ✅ LIVE APP PROGRESS — Grid loads posts; detail endpoint CORS fixed; ready for user flow testing
-
-**Session goal:** Get the NerdyMugs live frontend showing OCC posts and route card clicks to an individual detail view with an Amazon CTA.
+**Status:** ✅ Launch-ready with controlled publishing
 
 ---
 
-## ✅ Latest Completed
+## Current state
 
-- [x] Frontend stale CDN bundle fixed with Vite cache-busting transform (`?v=2.2`)
-- [x] Frontend now loads NerdyMugs branding from live Vercel
-- [x] Frontend posts grid fetches `/api/posts/ready?limit=100`
-- [x] Frontend CORS preflight bug fixed by removing custom request headers
-- [x] Frontend handles `products` as either object or array for image rendering
-- [x] Backend `/api/posts/[slug]` now returns CORS headers and supports `OPTIONS`
-- [x] Live detail endpoint verified with CORS headers
-- [x] Frontend browser back and `Back to all posts` behavior fixed
-- [x] Frontend Amazon URLs now force associate tag `georgwebsi-20`
-- [x] Frontend cards now link to clean `/{category}/{post-title}` URLs
-- [x] Vercel rewrite fallback added for direct clean URL visits
-- [x] Frontend build now generates static post HTML with per-post metadata
-- [x] Frontend build now emits `sitemap.xml` and `robots.txt`
-- [x] Backend `/api/posts/ready` max limit raised from 100 to 250 for static SEO builds
-- [x] Frontend logo/brand now links back to the homepage
-- [x] Frontend post body copy now formats into readable sections and feature lists
-- [x] Legacy standalone pages recreated at original URLs
-- [x] Static build now supports `NERDYMUGS_SITE_URL` for custom-domain cutover
-- [x] Package versions bumped:
-  - OCC backend: `1.0.3`
-  - NerdyMugs frontend: `2.3.10`
+- 3 junk `Custom Styles` / `wp-global-styles-*` posts have been deleted from the live database.
+- 30 posts are live on the public feed right now.
+- 118 posts are scheduled to unlock automatically, one every 3 days, starting `2026-05-31T12:00:00.000Z`.
+- Future scheduled posts are hidden from both:
+  - `GET /api/posts/ready`
+  - `GET /api/posts/[slug]`
 
 ---
 
-## 🔄 Current User Test
-
-Check the live frontend:
-
-```text
-https://nerdymugs-the-machine.vercel.app
-```
-
-Expected flow:
-
-1. Grid loads posts.
-2. Click a card.
-3. URL changes to a clean category/slug path.
-4. Direct page source includes post-specific title, description, canonical, social metadata, JSON-LD, and fallback article content.
-5. Individual detail view loads post content after React hydration.
-6. Browser back or `Back to all posts` returns to the grid.
-7. `View on Amazon` CTA opens the Amazon product/search URL with `tag=georgwebsi-20`.
-
-Notes:
-
-- Missing images lower in the grid are acceptable for now.
-- Clean URLs now have generated static HTML for build-time ready posts.
-- Vercel fallback still covers paths that do not have generated static HTML.
-
----
-
-## Previously Completed WP Cleanup
-
-- [x] Built `POST /api/jobs/hide-no-image-posts` route
-- [x] Enhanced `POST /api/jobs/repair-affiliate-links` with fallback Amazon URLs
-- [x] Added `needs_review` status to PostStatus enum
-- [x] Committed to GitHub and deployed to Vercel
-- [x] Updated CHANGELOG.md
-- [x] Updated README.md with new routes
-- [x] Added RUN_JOBS_COMMANDS.txt helper script
-
----
-
-## Previous User Action Required
-cd /Users/george/GITHUB/OCC-Clockwork-Wizards
-git pull origin main
-```
-
-New files pulled in:
-- `app/api/jobs/import-wordpress/route.ts`
-- `app/api/jobs/repair-affiliate-links/route.ts`
-- `lib/amazon-url-mappings.json`
-- `lib/placeholders.ts`
-- Several new MD docs
-
----
-
-## Step 2 — Build: `POST /api/jobs/hide-no-image-posts`
-
-**New route:** `app/api/jobs/hide-no-image-posts/route.ts`
-
-**Logic:**
-1. Authenticate with `CRON_SECRET` Bearer token
-2. Query all posts WHERE `content_source = 'wordpress-import'` AND (`image_url IS NULL` OR `image_url = ''`)
-3. Also check linked product `image_url` via join
-4. Mark matching posts: `status = 'needs_review'`
-5. Return summary count
-
-**Why `needs_review` not deleted:** Posts stay in DB for potential future image backfill. They simply stop showing in the published/ready feeds.
-
----
-
-## Step 3 — Enhance: `POST /api/jobs/repair-affiliate-links`
-
-**Existing route already handles:** Posts with a title match in `lib/amazon-url-mappings.json` → updates to the stored Amazon URL.
-
-**What needs to be added — the fallback:**
-For posts that still point to `nerdymugs.com` AND have NO match in the mappings file:
-- Generate: `https://www.amazon.com/s?k=TITLE_URL_ENCODED&tag=georgwebsi-20`
-- Where `TITLE_URL_ENCODED` = `encodeURIComponent(post.title.trim())`
-- Update `posts.product_url` + `products.product_url` with this fallback
-- Log these as `repairedWithFallback` in the response summary
-
-**Rule:** After this job, NO post should have a `nerdymugs.com` link. Zero exceptions.
-
----
-
-## Step 4 — Commit & push both changes
-
-Small commit message:
-```
-feat: hide no-image posts + fallback amazon search links for all wp imports
-```
-
-Update `CHANGELOG.md` with these changes.
-
----
-
-## Step 5 — Trigger both jobs live on Vercel
+## Live maintenance commands
 
 ```bash
-CRON_SECRET=$(grep '^CRON_SECRET=' .env | cut -d '=' -f2-)
+# Preview bad-post cleanup
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/delete-bad-posts" \
+  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": true}'
 
-# Step 1: Hide no-image posts
-curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/hide-no-image-posts" \
-  -H "Authorization: Bearer $CRON_SECRET" \
+# Delete bad posts
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/delete-bad-posts" \
+  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
   -H "Content-Type: application/json" \
   -d '{"dryRun": false}'
 
-# Step 2: Fix all remaining links (with fallback)
-curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/repair-affiliate-links" \
-  -H "Authorization: Bearer $CRON_SECRET" \
+# Preview scheduling
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/stagger-post-release" \
+  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
   -H "Content-Type: application/json" \
-  -d '{"dryRun": false}'
+  -d '{"dryRun": true, "liveCount": 30, "spacingDays": 3, "startDate": "2026-05-31T12:00:00.000Z"}'
+
+# Apply scheduling
+curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/stagger-post-release" \
+  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun": false, "liveCount": 30, "spacingDays": 3, "startDate": "2026-05-31T12:00:00.000Z"}'
 ```
 
 ---
 
-## Step 6 — Verify
+## How to edit upcoming posts and images
 
-Check the live NerdyMugs app:
-- No more "NERDY MUG | Image Coming Soon" placeholders visible (those posts hidden)
-- All remaining product links go to `amazon.com` (never `nerdymugs.com`)
-- Spot-check 3–5 links manually
+Use Supabase directly.
 
----
+### Posts table
 
-## After this session: What's next
+Edit these fields in `posts`:
 
-Once WP cleanup is done, the path forward is:
-1. **CRITICAL - SEO**: Build individual product detail pages (slug-based URLs) with:
-   - Full product description, image gallery
-   - SEO meta tags (title, description, Open Graph)
-   - CTA button to Amazon (not direct click-to-Amazon on cards)
-   - Click on card → goes to detail page → CTA goes to Amazon
-2. Set up domain/DNS to point nerdymugs.com at the new Vercel app
-3. Shut down the WP site
-4. Move on to Phase 3 of the Weekly Inventory Redesign Plan (batch inventory job)
+- `title`
+- `excerpt`
+- `body_md`
+- `status`
+- `scheduled_for`
+- `legacy_source_path`
 
-### SEO Architecture Required
-**Current:** Card click → directly to Amazon (loses SEO value, no indexed pages)
-**Required:** Card click → `/product/{slug}` page → "Buy on Amazon" CTA button
+Recommended filters:
 
-**Each product page needs:**
-- Unique URL: `/product/{slug}` (e.g., `/product/iron-man-ceramic-mug`)
-- Title tag: Product name + site name
-- Meta description: AI-generated excerpt
-- Open Graph tags for social sharing
-- H1 with product title
-- Product image (primary)
-- Full description/body content
-- Price (if available)
-- **CTA Button**: "View on Amazon" with affiliate link
-- Related products section (optional)
+- `status = ready` to see the upcoming queue
+- sort by `scheduled_for` ascending
 
-**Implementation:**
-- Create `ProductDetail.tsx` component
-- Add route handling in App.tsx for `/product/:slug`
-- Update `ProductCard.tsx` to link to detail page instead of Amazon
-- Use existing `GET /api/posts/[slug]` endpoint to fetch product data
+### Products table
+
+Use the `product_id` from the post row, then open the matching row in `products`.
+
+Edit:
+
+- `image_url`
+- `product_url`
+- `title`
+- `description`
+
+### Verification
+
+- Public feed now: `https://app-liart-five-43.vercel.app/api/posts/ready?limit=250`
+- Recent inventory sample: `https://app-liart-five-43.vercel.app/api/posts/recent?limit=100`
 
 ---
 
-## Key facts for reconnection
+## Operational note
 
-| Thing | Value |
-|---|---|
-| Live API base | `https://app-liart-five-43.vercel.app` |
-| Affiliate tag | `georgwebsi-20` |
-| Fallback URL pattern | `https://www.amazon.com/s?k={encoded_title}&tag=georgwebsi-20` |
-| Posts table field for hiding | `status = 'needs_review'` |
-| WP import identifier | `content_source = 'wordpress-import'` |
-| Posts with no image | query: `image_url IS NULL OR image_url = ''` on joined product |
-| Existing repair route | `app/api/jobs/repair-affiliate-links/route.ts` |
-| New route to build | `app/api/jobs/hide-no-image-posts/route.ts` |
+The frontend static build only regenerates static HTML and sitemap entries for currently public posts at deploy time.
+
+That means:
+
+- newly scheduled posts will still go live automatically through the SPA fallback when the backend date arrives
+- but to refresh static HTML and `sitemap.xml` for those newly public posts, redeploy the frontend after a release batch
