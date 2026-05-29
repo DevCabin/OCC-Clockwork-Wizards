@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
+import {
+  PUBLIC_CORS_HEADERS,
+  isScheduledForPublicView,
+  isVisiblePostStatus,
+} from "@/lib/publicPosts";
 
 export const dynamic = "force-dynamic";
-
-// CORS headers for cross-origin requests
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
 
 export async function GET(req: NextRequest) {
   const supabase = getSupabaseClient();
@@ -23,21 +21,24 @@ export async function GET(req: NextRequest) {
       id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, status, published_at, scheduled_for, legacy_source_url, legacy_source_path, content_source, run_date, created_at,
       products(image_url)
     `)
-    .in("status", ["ready", "published"])
     .order("run_date", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(250);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: PUBLIC_CORS_HEADERS });
   }
+
+  const visiblePosts = (data ?? [])
+    .filter((post) => isVisiblePostStatus(post.status) && isScheduledForPublicView(post.scheduled_for))
+    .slice(0, limit);
 
   // Response with CORS headers
   return NextResponse.json(
-    { posts: data ?? [], _cache: Date.now() },
+    { posts: visiblePosts, _cache: Date.now() },
     {
       headers: {
-        ...corsHeaders,
+        ...PUBLIC_CORS_HEADERS,
         'Cache-Control': 'no-store, max-age=0, must-revalidate',
         'CDN-Cache-Control': 'no-store',
         'Vercel-CDN-Cache-Control': 'no-store',
