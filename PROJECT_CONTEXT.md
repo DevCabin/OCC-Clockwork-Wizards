@@ -1,6 +1,6 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-28 7:31 PM CDT
+## Last Updated: 2026-05-28 7:42 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
@@ -26,7 +26,7 @@ Build a working coffee mug affiliate website with:
 - CORS headers active: `access-control-allow-origin: *`
 
 ### Frontend (NerdyMugs-The-Machine) ✅
-- Version: `2.3.7`
+- Version: `2.3.8`
 - Live frontend now serves NerdyMugs bundle with cache-busting query string
 - Grid loads posts from `/api/posts/ready?limit=100`
 - Cards are real links and open clean detail URLs
@@ -35,6 +35,7 @@ Build a working coffee mug affiliate website with:
 - Production builds generate static HTML for clean post URLs with per-post title, description, canonical, Open Graph, Twitter card, JSON-LD, and fallback article content
 - Production builds emit `sitemap.xml` and `robots.txt`
 - Detail view fetches `/api/posts/[slug]`
+- Header logo/brand links back to the homepage
 - Browser back and `Back to all posts` return from detail view to grid
 - Detail CTA links to Amazon through `post.product_url` with `tag=georgwebsi-20`
 - Top posts display Amazon product images; lower missing images are acceptable for now
@@ -51,6 +52,7 @@ Build a working coffee mug affiliate website with:
 - Vercel rewrite fallback added so direct clean URL visits load the SPA
 - Frontend static post HTML generation added for real per-post SEO metadata
 - Backend ready feed limit increased so static SEO builds can cover the full ready inventory
+- Frontend logo/brand home link added
 
 ## Repositories
 - **OCC-Clockwork-Wizards**: `/Users/george/GITHUB/OCC-Clockwork-Wizards`
