@@ -1,6 +1,6 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-28 7:22 PM CDT
+## Last Updated: 2026-05-28 7:31 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
@@ -17,8 +17,9 @@ Build a working coffee mug affiliate website with:
 ## Current Status (Last Known)
 
 ### Backend (OCC-Clockwork-Wizards) ✅
-- Version: `1.0.2`
+- Version: `1.0.3`
 - API endpoint `/api/posts/ready` returns posts with CORS headers
+- API endpoint `/api/posts/ready` accepts build-friendly limits up to 250
 - API endpoint `/api/posts/[slug]` now returns individual post data with CORS headers
 - 151 posts in "ready" status with product data
 - Response includes: id, title, slug, excerpt, body_md, products.image_url
@@ -49,6 +50,7 @@ Build a working coffee mug affiliate website with:
 - Frontend clean permalink routing added for `/{category}/{post-title}` paths
 - Vercel rewrite fallback added so direct clean URL visits load the SPA
 - Frontend static post HTML generation added for real per-post SEO metadata
+- Backend ready feed limit increased so static SEO builds can cover the full ready inventory
 
 ## Repositories
 - **OCC-Clockwork-Wizards**: `/Users/george/GITHUB/OCC-Clockwork-Wizards`

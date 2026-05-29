@@ -1,5 +1,13 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-05-28 - v1.0.3: Larger Ready Feed for SEO Builds
+
+### Changed
+- Increased `/api/posts/ready` maximum `limit` from 100 to 250 so the NerdyMugs static SEO build can fetch the full ready inventory.
+
+### Version
+- Bumped backend package version from `1.0.2` to `1.0.3`.
+
 ## 2026-05-28 - v1.0.2: Detail Endpoint CORS + Live Frontend Integration
 
 ### Fixed

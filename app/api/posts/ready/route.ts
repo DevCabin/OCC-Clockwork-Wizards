@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabaseClient();
   const { searchParams } = new URL(req.url);
   const limitParam = Number(searchParams.get("limit") ?? "21");
-  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 21;
+  const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 250) : 21;
 
   // Simple query - just get posts with product join, no image filtering
   const { data, error } = await supabase
