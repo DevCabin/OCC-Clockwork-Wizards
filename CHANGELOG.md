@@ -1,5 +1,15 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-05-30 - Documentation Security Review Handoff
+
+### Changed
+- Removed literal `CRON_SECRET` values from active repo docs and replaced them with local env lookup examples.
+- Updated `README.md` and `PROJECT_CONTEXT.md` to document current security follow-up priorities.
+- Clarified that `/api/posts/recent` currently exposes broader inventory than the intended public read surfaces.
+
+### Added
+- `END_SESSION_NOTES_2026-05-30.md` with the security review summary and next-session remediation order.
+
 ## 2026-05-28 - v1.0.4: Public Release Controls + Junk Cleanup Jobs
 
 ### Added

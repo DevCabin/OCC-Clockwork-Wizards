@@ -29,7 +29,7 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 |---|---|---|---|
 | `GET` | `/api/products/latest` | None | Latest products (default 3) |
 | `GET` | `/api/products/recent` | None | Recent products (default 21) |
-| `GET` | `/api/posts/recent` | None | AI-generated posts (default 21) |
+| `GET` | `/api/posts/recent` | None | Recent inventory/audit feed (currently broader than the public ready feed) |
 | `GET` | `/api/posts/ready` | None | Publicly visible posts only |
 | `GET` | `/api/posts/[slug]` | None | Individual public post detail payload with CORS |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
@@ -91,6 +91,13 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 | `OPENAI_API_KEY` | OpenAI API key |
 | `CRON_SECRET` | Bearer token for job endpoints |
 | `WORDPRESS_IMPORT_BASE_URL` | Optional override base URL for `imported-posts.json` / `redirects.json` |
+
+## Security Notes
+
+- Treat `CRON_SECRET` as a server-only admin token. Never commit it to docs, scripts, or repo notes.
+- Do not pass `CRON_SECRET` through frontend env vars or browser-triggered flows.
+- `GET /api/posts/ready` and `GET /api/posts/[slug]` are the intended public content endpoints.
+- `GET /api/posts/recent` currently returns broader inventory data and should be treated as an internal/audit surface until it is narrowed or protected.
 
 ---
 
@@ -154,6 +161,10 @@ curl -sS -i "https://app-liart-five-43.vercel.app/api/posts/programmers-while-co
   - `30` posts live now
   - future posts unlock automatically every 3 days via `scheduled_for`
 - Missing lower-grid images are currently tolerated; content quality and release control are the active priorities.
+- Security follow-up is now an active priority:
+  - rotate `CRON_SECRET`
+  - remove any browser-side use of admin tokens
+  - tighten `/api/posts/recent` if it should not expose non-public inventory
 
 ### Public visibility rules
 

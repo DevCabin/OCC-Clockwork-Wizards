@@ -18,27 +18,29 @@
 ## Live maintenance commands
 
 ```bash
+CRON_SECRET=$(grep '^CRON_SECRET=' .env | cut -d '=' -f2-)
+
 # Preview bad-post cleanup
 curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/delete-bad-posts" \
-  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
+  -H "Authorization: Bearer $CRON_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"dryRun": true}'
 
 # Delete bad posts
 curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/delete-bad-posts" \
-  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
+  -H "Authorization: Bearer $CRON_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"dryRun": false}'
 
 # Preview scheduling
 curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/stagger-post-release" \
-  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
+  -H "Authorization: Bearer $CRON_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"dryRun": true, "liveCount": 30, "spacingDays": 3, "startDate": "2026-05-31T12:00:00.000Z"}'
 
 # Apply scheduling
 curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/stagger-post-release" \
-  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
+  -H "Authorization: Bearer $CRON_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"dryRun": false, "liveCount": 30, "spacingDays": 3, "startDate": "2026-05-31T12:00:00.000Z"}'
 ```

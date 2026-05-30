@@ -1,6 +1,6 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-28 9:38 PM CDT
+## Last Updated: 2026-05-30 1:55 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
@@ -21,6 +21,7 @@ Build a working coffee mug affiliate website with:
 - API endpoint `/api/posts/ready` returns only currently public posts with CORS headers
 - API endpoint `/api/posts/ready` accepts build-friendly limits up to 250
 - API endpoint `/api/posts/[slug]` now returns individual post data with CORS headers
+- Security review completed on 2026-05-30
 - 3 junk `Custom Styles` / `wp-global-styles-*` posts deleted from the live database
 - 30 posts are live now
 - 118 additional posts are scheduled to release automatically every 3 days starting `2026-05-31`
@@ -36,6 +37,7 @@ Build a working coffee mug affiliate website with:
 - Generated posts use `/mugs/{slug}`
 - Production builds generate static HTML for clean post URLs with per-post title, description, canonical, Open Graph, Twitter card, JSON-LD, and fallback article content
 - Production builds emit `sitemap.xml` and `robots.txt`
+- Production builds now emit `rss.xml`, `sitemap.xml`, and `robots.txt`
 - Post body copy is formatted into readable paragraphs, section headings, feature lists, and note-style `P.S.` blocks
 - Legacy standalone pages now exist at their original URLs, including `/about-nerdy-mugs/` and `/random-mugs/`
 - Header now includes a simple mobile-responsive site menu
@@ -75,7 +77,7 @@ Build a working coffee mug affiliate website with:
 ## API Endpoints Available
 - `GET /api/posts/ready?limit=100` - Returns the public feed used by the frontend grid
 - `GET /api/posts/ready?limit=250` - Returns the full currently public set for audits/builds
-- `GET /api/posts/recent?limit=100` - Returns all posts regardless of status
+- `GET /api/posts/recent?limit=100` - Returns broader inventory and should not be treated as the public site feed
 - `GET /api/posts/{slug}` - Returns a single post for the detail page
 - `POST /api/jobs/delete-bad-posts` - Deletes broken junk posts such as imported `Custom Styles`
 - `POST /api/jobs/stagger-post-release` - Keeps a fixed number of posts live and schedules the rest forward
@@ -85,30 +87,35 @@ Build a working coffee mug affiliate website with:
 - `POST /api/jobs/restore-posts-with-images` - Restores only posts with valid images
 
 ## CRON_SECRET for API Jobs
-```
-I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=
-```
+
+Use a local env lookup at runtime. Do not paste literal secret values into repo docs.
 
 ## Working Commands
 ```bash
+CRON_SECRET=$(grep '^CRON_SECRET=' .env | cut -d '=' -f2-)
+
 # Mark posts without images
 curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/mark-no-image-posts" \
-  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA=" \
+  -H "Authorization: Bearer $CRON_SECRET" \
   -d '{"dryRun": false}'
 
 # Restore all posts
 curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/restore-all" \
-  -H "Authorization: Bearer I2S43p7yND7Sz7SKBpgrxLkKUWq4BbaNWIsvRIgCnLA="
+  -H "Authorization: Bearer $CRON_SECRET"
 
 # Check if API returns posts
 curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 ```
 
 ## Next Steps (To Complete)
-1. Point `nerdymugs.com` and `www.nerdymugs.com` at this Vercel frontend
-2. Set frontend env `NERDYMUGS_SITE_URL=https://nerdymugs.com` and redeploy after domain cutover
-3. Use Supabase to improve scheduled posts before they go live, especially missing `image_url` values in `products`
-4. Redeploy the frontend after future release batches if you want fresh static HTML and sitemap entries for newly public posts
+1. Rotate `CRON_SECRET` in Vercel and local env files because the old value was documented in repo notes.
+2. Remove any browser-side use of admin tokens from the paired NerdyMugs frontend.
+3. Decide whether `/api/posts/recent` should become authenticated or filtered to public-only content.
+4. Restrict WordPress import artifact URLs to an allowlist or local-only workflow.
+5. Point `nerdymugs.com` and `www.nerdymugs.com` at this Vercel frontend
+6. Set frontend env `NERDYMUGS_SITE_URL=https://nerdymugs.com` and redeploy after domain cutover
+7. Use Supabase to improve scheduled posts before they go live, especially missing `image_url` values in `products`
+8. Redeploy the frontend after future release batches if you want fresh static HTML and sitemap entries for newly public posts
 
 ## Key Files to Modify
 - `NerdyMugs-The-Machine/app/src/App.tsx` - Grid fetch + SPA detail state
@@ -124,7 +131,7 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 - `OCC-Clockwork-Wizards/app/api/posts/[slug]/route.ts` - Detail endpoint with CORS
 
 ## Important Notes
-- Backend API is working correctly
+- Backend API is working, but security follow-up is required
 - 148 posts remain after junk cleanup
 - Only 30 are intentionally public right now
 - Future posts are date-gated at the API level and unlock automatically every 3 days
@@ -133,6 +140,9 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 - Clean URLs now have generated static HTML for the currently public posts returned during build
 - Vercel fallback still covers paths that do not have generated static HTML
 - Future scheduled posts will become accessible automatically via SPA fallback when their `scheduled_for` date arrives
+- The old documented `CRON_SECRET` value should be treated as compromised until rotated
+- `/api/posts/ready` and `/api/posts/[slug]` are the intended public read surfaces
+- `/api/posts/recent` currently exposes broader lifecycle data than the public site needs
 
 ## How To Update Upcoming Posts
 
