@@ -37,3 +37,5 @@ At the start of each work session:
   3. store in Supabase
   4. generate/store concise posts
   5. expose API endpoints for verification
+
+ON NEXT RUN 6.26.26 - read @REFACTOR.md - we are going to turn this into the project it was meant to be. You are going to run it AUTONOMOUSLY until complete. Can you do it?
