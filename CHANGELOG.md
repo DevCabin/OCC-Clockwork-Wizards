@@ -1,5 +1,23 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-06-26 - Weekly Loop Refactor Plan Added
+
+### Added
+- `REFACTOR.md` — comprehensive 6-phase plan to refactor the system into a weekly autonomous content engine:
+  - Phase 1: Security hardening (protect endpoints, restrict WordPress import, audit `/api/posts/recent`)
+  - Phase 2: New Supabase tables (`weekly_discovery_rules`, `weekly_product_candidates`, `content_generation_runs`)
+  - Phase 3: `POST /api/jobs/weekly-discovery` endpoint
+  - Phase 4: `POST /api/jobs/generate-weekly-posts` endpoint
+  - Phase 5: Frontend simplification in NerdyMugs
+  - Phase 6: Loop documentation and cron wiring
+- `OCC-Clockwork-Wizards.code-workspace` — VS Code workspace config
+- Updated `CLINE_INSTRUCTIONS.md` with pointer to `REFACTOR.md` for next session
+
+### Notes
+- Plan is in documentation-only state; implementation not yet started
+- Goal: OCC discovers product candidates on weekends, generates posts early week, runs automatically via Vercel Cron
+- NerdyMugs remains a simple frontend consumer
+
 ## 2026-05-30 - Documentation Security Review Handoff
 
 ### Changed
