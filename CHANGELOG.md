@@ -1,5 +1,57 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-06-27 - v2.0.0: Weekly Autonomous Content Loop
+
+### Added
+- **Phase 1: Security Hardening**
+  - Added CRON_SECRET protection to `/api/jobs/update-product-image`
+  - Disabled WordPress import endpoint (returns 410, phase complete)
+  
+- **Phase 2: Data Model**
+  - `weekly_discovery_rules` table - stores user-defined discovery rules
+  - `weekly_product_candidates` table - stores discovered products awaiting review
+  - `content_generation_runs` table - tracks generation job runs
+  - New TypeScript types and Zod schemas in `lib/types.ts`
+  - Auto-update triggers for `updated_at` columns
+  
+- **Phase 3: Weekly Discovery Job**
+  - `POST /api/jobs/weekly-discovery` endpoint
+  - Protected by CRON_SECRET
+  - Loads active rules, builds Amazon search queries
+  - Uses Firecrawl + OpenAI for extraction and scoring
+  - Stores candidates with deduplication
+  
+- **Phase 4: Post Generation Job**
+  - `POST /api/jobs/generate-weekly-posts` endpoint
+  - Protected by CRON_SECRET
+  - Selects approved/high-confidence candidates
+  - Generates posts using OpenAI
+  - Stores in existing posts/products tables
+  - Updates candidate status and links to posts
+  
+- **Phase 6: Loop Harness**
+  - Updated `vercel.json` with weekly cron schedules:
+    - Saturday 14:00 UTC: weekly-discovery
+    - Monday 15:00 UTC: generate-weekly-posts
+  - Documentation in `/docs`:
+    - `LOOP_ARCHITECTURE.md` - full system architecture
+    - `AGENT_RULES.md` - what agents can/cannot change
+    - `WEEKLY_CONTENT_LOOP.md` - user guide
+    - `EVALS.md` - testing checklist
+
+### Behavior
+- Weekend: OCC discovers products based on weekly rules
+- Early week: OCC generates posts from approved candidates
+- NerdyMugs: Only reads public endpoints, renders content
+
+### Loop Success Criteria Met
+- ✅ Protected endpoints reject requests without CRON_SECRET
+- ✅ Weekly rules can create product candidates
+- ✅ Approved candidates become scheduled posts
+- ✅ Existing public NerdyMugs pages still work
+- ✅ OCC builds successfully
+- ✅ Documentation explains autonomous loop
+
 ## 2026-06-26 - Weekly Loop Refactor Plan Added
 
 ### Added
