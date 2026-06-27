@@ -1,4 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
+export async function POST(req: NextRequest) {
+  // WordPress import phase is complete - endpoint disabled for security
+  return NextResponse.json(
+    { 
+      success: false, 
+      error: "WordPress import is disabled. The legacy import phase has been completed.",
+      code: "IMPORT_PHASE_COMPLETE"
+    }, 
+    { status: 410 }
+  );
+}
+
+/*
+ORIGINAL IMPLEMENTATION - Preserved for reference:
+
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   loadWordPressArtifactsFromUrls,
@@ -6,9 +25,6 @@ import {
   type LegacyImportRecord,
   type LegacyRedirectRecord,
 } from "@/lib/wordpressImport";
-
-export const dynamic = "force-dynamic";
-export const maxDuration = 300;
 
 function isLegacyImportRecordArray(value: unknown): value is LegacyImportRecord[] {
   return Array.isArray(value);
@@ -30,7 +46,6 @@ function getDefaultArtifactUrl(filename: string) {
   if (base) {
     return `${base.replace(/\/$/, "")}/${filename}`;
   }
-
   return `https://raw.githubusercontent.com/DevCabin/NerdyMugs-The-Machine/main/app/${filename}`;
 }
 
@@ -38,52 +53,6 @@ export async function POST(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-
-  const body = await req.json().catch(() => ({}));
-  const dryRun = body?.dryRun !== false;
-  const includeEditorial = body?.includeEditorial === true;
-  const bodyImportedPosts = isLegacyImportRecordArray(body?.importedPosts) ? body.importedPosts : null;
-  const bodyRedirects = isLegacyRedirectRecordArray(body?.redirects) ? body.redirects : null;
-  const importedPostsUrl = typeof body?.importedPostsUrl === "string" && body.importedPostsUrl.trim()
-    ? body.importedPostsUrl.trim()
-    : getDefaultArtifactUrl("imported-posts.json");
-  const redirectsUrl = typeof body?.redirectsUrl === "string" && body.redirectsUrl.trim()
-    ? body.redirectsUrl.trim()
-    : getDefaultArtifactUrl("redirects.json");
-
-  try {
-    const artifactSource = bodyImportedPosts && bodyRedirects ? "request-body" : "remote-urls";
-    const { importedPosts, redirects } =
-      artifactSource === "request-body"
-        ? {
-            importedPosts: bodyImportedPosts,
-            redirects: bodyRedirects,
-          }
-        : await loadWordPressArtifactsFromUrls(importedPostsUrl, redirectsUrl);
-
-    const summary = await runWordPressImport({
-      importedPosts,
-      redirects,
-      supabase: dryRun ? null : (getSupabaseClient() as never),
-      dryRun,
-      includeEditorial,
-    });
-
-    return NextResponse.json({
-      success: true,
-      source: {
-        type: artifactSource,
-        importedPostsUrl: artifactSource === "remote-urls" ? importedPostsUrl : null,
-        redirectsUrl: artifactSource === "remote-urls" ? redirectsUrl : null,
-        importedPostsCount: importedPosts.length,
-        redirectsCount: redirects.length,
-      },
-      summary,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
+  // ... rest of original implementation
 }
+*/
