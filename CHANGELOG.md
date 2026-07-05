@@ -1,5 +1,31 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-07-05 - v2.0.2: Admin API for Weekly Loop
+
+### Added
+- `admin_settings` table to store the frontend admin gate password.
+- Admin API endpoints under `/api/admin/*`:
+  - `POST /api/admin/verify-password` — validates admin password.
+  - `GET /api/admin/rules` — list `weekly_discovery_rules`.
+  - `POST /api/admin/rules` — create a rule.
+  - `PATCH /api/admin/rules/[id]` — update a rule.
+  - `DELETE /api/admin/rules/[id]` — delete a rule.
+  - `GET /api/admin/candidates` — list this week's `weekly_product_candidates`.
+  - `POST /api/admin/candidates` — update candidate status.
+  - `POST /api/admin/trigger-discovery` — run weekly discovery job.
+  - `POST /api/admin/trigger-generation` — run weekly post generation job.
+- `lib/adminAuth.ts` — shared admin password verification helper.
+
+### Security
+- Admin endpoints validate the password against Supabase; no `CRON_SECRET` is exposed to the frontend.
+- Trigger endpoints call protected job endpoints server-side using `CRON_SECRET`.
+
+### Verified
+- `npm run build` passes.
+
+### Version
+- Bumped backend package version from `2.0.1` to `2.0.2`.
+
 ## 2026-07-05 - v2.0.1: Public Feed Excludes Imageless Posts
 
 ### Changed
