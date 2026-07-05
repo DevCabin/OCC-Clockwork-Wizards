@@ -1,15 +1,35 @@
-import { RULE, normalizeProduct } from "./products";
-import { openAiPostSchema, openAiScoreSchema, type GeneratedPost, type Product } from "./types";
+import { normalizeProduct } from "./products";
+import { openAiPostSchema, openAiScoreSchema, type GeneratedPost, type Product, type WeeklyDiscoveryRule } from "./types";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 
-export async function scoreProductWithOpenAI(product: Product): Promise<{ score: number; isRelevant: boolean }> {
+export async function scoreProductWithOpenAI(
+  product: Product,
+  rule?: WeeklyDiscoveryRule
+): Promise<{ score: number; isRelevant: boolean }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("Missing OPENAI_API_KEY");
 
+  const ruleContext = rule
+    ? {
+        name: rule.name,
+        category: rule.category,
+        tags: rule.tags,
+        search_terms: rule.search_terms,
+        min_score: rule.min_score,
+        max_candidates: rule.max_candidates,
+      }
+    : {
+        name: "nerdy-mugs",
+        keywords: ["funny mug", "nerdy mug", "geek coffee mug", "sci fi mug", "programmer mug"],
+        excludeKeywords: ["poster", "sticker", "download"],
+        priceMin: 10,
+        priceMax: 30,
+      };
+
   const prompt = [
     "You are scoring product relevance for this rule:",
-    JSON.stringify(RULE),
+    JSON.stringify(ruleContext),
     "Product:",
     JSON.stringify(product),
     "Return ONLY strict JSON with keys score (0-100 number) and isRelevant (boolean).",
