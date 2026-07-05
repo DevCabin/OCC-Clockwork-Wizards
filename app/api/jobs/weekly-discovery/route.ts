@@ -27,20 +27,26 @@ function getWeekStartDate(date = new Date()): string {
 
 function buildAmazonSearchUrls(category: string, tags: string[], searchTerms: string[]): string[] {
   const urls: string[] = [];
-  
-  // Build queries from category + tags
   const terms = searchTerms.length > 0 ? searchTerms : tags;
-  
+  const suffixes = ["mug", "coffee mug", "cup", "travel mug"];
+
   for (const term of terms) {
-    const query = `${category} ${term} mug`.trim();
-    const encoded = encodeURIComponent(query);
-    urls.push(`https://www.amazon.com/s?k=${encoded}`);
+    for (const suffix of suffixes) {
+      const query = `${category} ${term} ${suffix}`.trim();
+      const encoded = encodeURIComponent(query);
+      urls.push(`https://www.amazon.com/s?k=${encoded}`);
+      // Add page 2 for more results
+      urls.push(`https://www.amazon.com/s?k=${encoded}&page=2`);
+    }
   }
-  
-  // Also add a generic category search
-  const genericQuery = encodeURIComponent(`${category} mug`);
-  urls.push(`https://www.amazon.com/s?k=${genericQuery}`);
-  
+
+  // Generic category searches
+  for (const suffix of suffixes) {
+    const genericQuery = encodeURIComponent(`${category} ${suffix}`.trim());
+    urls.push(`https://www.amazon.com/s?k=${genericQuery}`);
+    urls.push(`https://www.amazon.com/s?k=${genericQuery}&page=2`);
+  }
+
   return [...new Set(urls)]; // Deduplicate
 }
 
