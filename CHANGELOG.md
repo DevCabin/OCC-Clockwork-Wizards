@@ -1,5 +1,18 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-07-05 - v2.0.1: Public Feed Excludes Imageless Posts
+
+### Changed
+- `GET /api/posts/ready`
+  - Now filters out posts whose linked product has no `image_url`.
+  - Goal: Remove "No image" placeholder cards from the NerdyMugs public grid while preserving the posts in the database for future image updates.
+
+### Verified
+- `npm run build` passes.
+
+### Version
+- Bumped backend package version from `2.0.0` to `2.0.1`.
+
 ## 2026-06-27 - v2.0.0: Weekly Autonomous Content Loop
 
 ### Added

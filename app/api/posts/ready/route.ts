@@ -14,13 +14,14 @@ export async function GET(req: NextRequest) {
   const limitParam = Number(searchParams.get("limit") ?? "21");
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 250) : 21;
 
-  // Simple query - just get posts with product join, no image filtering
+  // Public feed: only posts whose linked product has an image
   const { data, error } = await supabase
     .from("posts")
     .select(`
       id, product_id, rule_name, product_title, product_url, title, slug, excerpt, body_md, status, published_at, scheduled_for, legacy_source_url, legacy_source_path, content_source, run_date, created_at,
       products(image_url)
     `)
+    .not("products.image_url", "is", null)
     .order("run_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(250);

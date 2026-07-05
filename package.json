@@ -1,6 +1,6 @@
 {
   "name": "occ-clockwork-wizards-v1",
-  "version": "1.0.4",
+  "version": "2.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
