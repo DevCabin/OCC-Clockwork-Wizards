@@ -125,12 +125,16 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=5"
 - [ ] `GET /api/admin/rules` returns active rules
 - [ ] `POST /api/admin/rules` creates a rule with valid password
 - [ ] `PATCH /api/admin/rules/[id]` updates a rule with valid password
-- [ ] `DELETE /api/admin/rules/[id]` deletes a rule with valid password
-- [ ] `GET /api/admin/candidates` returns this week's candidates
+- [x] `DELETE /api/admin/rules/[id]` deletes a rule with valid password
+- [x] `POST /api/admin/rules/[id]` with `action: "delete"` deletes a rule with valid password
+- [x] `GET /api/admin/candidates` returns this week's candidates
 - [ ] `POST /api/admin/candidates` updates candidate status with valid password
 - [ ] `POST /api/admin/trigger-discovery` runs with valid password
 - [ ] `POST /api/admin/trigger-generation` runs with valid password
+- [ ] `GET /api/admin/runs` returns recent run history
 - [ ] NerdyMugs `/admin` renders the password gate
+- [ ] NerdyMugs `/admin` Actions tab shows next scheduled run times
+- [ ] NerdyMugs `/admin` Actions tab shows recent runs
 - [ ] No `CRON_SECRET` or Supabase service role is exposed in frontend code
 
 **Test Commands:**

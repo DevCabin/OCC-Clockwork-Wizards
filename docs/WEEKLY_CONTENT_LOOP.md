@@ -52,9 +52,26 @@ curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/weekly-discovery
   "candidatesFound": 25,
   "candidatesInserted": 23,
   "duplicatesSkipped": 2,
-  "errors": []
+  "errors": [],
+  "debug": [
+    {
+      "rule": "Star Trek Week",
+      "category": "Star Trek",
+      "minScore": 75,
+      "searchUrls": ["..."],
+      "extractionCounts": [8, 5, 0],
+      "domainFiltered": 0,
+      "duplicateFiltered": 2,
+      "scoreRejected": 1,
+      "schemaRejected": 0,
+      "accepted": 10,
+      "errors": []
+    }
+  ]
 }
 ```
+
+If `candidatesFound` is lower than `max_candidates`, the `debug` array shows exactly where products were lost (extraction, filtering, scoring, or schema validation).
 
 ### 3. Review Candidates
 

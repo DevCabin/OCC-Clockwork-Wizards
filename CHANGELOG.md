@@ -1,5 +1,29 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-07-05 - v2.0.3: Admin API Hardening + Discovery Improvements
+
+### Added
+- `GET /api/admin/runs` — returns recent `content_generation_runs` for the admin dashboard.
+- Discovery response now includes a `debug` array per rule showing search URLs, extraction counts, and filter/reject tallies.
+- `POST /api/admin/rules/[id]` now supports `action: "delete"` as a reliable fallback for rule deletion.
+
+### Changed
+- `scoreProductWithOpenAI` now receives the actual weekly rule context instead of a hardcoded legacy rule.
+- `buildAmazonSearchUrls` now generates more search URLs per rule:
+  - Suffix variations: `mug`, `coffee mug`, `cup`, `travel mug`
+  - Page 1 and page 2 for each query
+  - Generic category queries included
+
+### Fixed
+- Rule deletion now works reliably from the NerdyMugs `/admin` UI.
+- `DELETE /api/admin/rules/[id]` accepts password via query string as well as body.
+
+### Verified
+- `npm run build` passes.
+
+### Version
+- Bumped backend package version from `2.0.2` to `2.0.3`.
+
 ## 2026-07-05 - v2.0.2: Admin API for Weekly Loop
 
 ### Added
