@@ -1,14 +1,15 @@
 # NerdyMugs Project Context
 
-## Last Updated: 2026-05-30 1:55 PM CDT
+## Last Updated: 2026-07-05 3:46 PM CDT
 
 ## Project Goal
 Build a working coffee mug affiliate website with:
 - **Frontend**: React grid displaying mug posts (NerdyMugs-The-Machine)
 - **Backend**: Next.js API providing posts (OCC-Clockwork-Wizards)
-- **Data**: Supabase with posts + products tables
+- **Data**: Supabase with posts + products tables, plus weekly loop tables
 - **Images**: Amazon product images
 - **Flow**: Grid view → click card → detail page → Amazon CTA
+- **Autonomous weekly loop**: discovery → review → generation → publication
 
 ## Current URLs
 - **Frontend**: https://nerdymugs-the-machine.vercel.app
@@ -17,19 +18,28 @@ Build a working coffee mug affiliate website with:
 ## Current Status (Last Known)
 
 ### Backend (OCC-Clockwork-Wizards) ✅
-- Version: `1.0.4`
+- Version: `2.0.2`
 - API endpoint `/api/posts/ready` returns only currently public posts with CORS headers
+- API endpoint `/api/posts/ready` now excludes posts whose linked product has no `image_url`
 - API endpoint `/api/posts/ready` accepts build-friendly limits up to 250
 - API endpoint `/api/posts/[slug]` now returns individual post data with CORS headers
+- Weekly autonomous loop implemented:
+  - `weekly_discovery_rules` table for rule configuration
+  - `weekly_product_candidates` table for discovered products awaiting review
+  - `content_generation_runs` table for generation job tracking
+  - `POST /api/jobs/weekly-discovery` runs weekend discovery
+  - `POST /api/jobs/generate-weekly-posts` turns candidates into ready posts
+- Admin API endpoints added under `/api/admin/*` for the NerdyMugs `/admin` page:
+  - rule CRUD, candidate status updates, job triggers, password verification
+- `admin_settings` table stores the admin gate password (initial: `NERDYMUGS1234!`)
+- Cron schedule: Saturday 14:00 UTC discovery, Monday 15:00 UTC generation
 - Security review completed on 2026-05-30
 - 3 junk `Custom Styles` / `wp-global-styles-*` posts deleted from the live database
-- 30 posts are live now
-- 118 additional posts are scheduled to release automatically every 3 days starting `2026-05-31`
 - Response includes: id, title, slug, excerpt, body_md, products.image_url
 - CORS headers active: `access-control-allow-origin: *`
 
 ### Frontend (NerdyMugs-The-Machine) ✅
-- Version: `2.3.11`
+- Version: `2.4.0`
 - Live frontend now serves NerdyMugs bundle with cache-busting query string
 - Grid loads posts from `/api/posts/ready?limit=100`
 - Cards are real links and open clean detail URLs
@@ -75,16 +85,35 @@ Build a working coffee mug affiliate website with:
 - **NerdyMugs-The-Machine**: `/Users/george/GITHUB/NerdyMugs-The-Machine/app`
 
 ## API Endpoints Available
+
+### Public Read Endpoints
 - `GET /api/posts/ready?limit=100` - Returns the public feed used by the frontend grid
 - `GET /api/posts/ready?limit=250` - Returns the full currently public set for audits/builds
+- `GET /api/posts/{slug}` - Returns a single public post for the detail page
+
+### Internal/Audit Endpoints
 - `GET /api/posts/recent?limit=100` - Returns broader inventory and should not be treated as the public site feed
-- `GET /api/posts/{slug}` - Returns a single post for the detail page
+
+### Weekly Loop Job Endpoints (CRON_SECRET required)
+- `POST /api/jobs/weekly-discovery` - Runs weekend discovery against active rules
+- `POST /api/jobs/generate-weekly-posts` - Turns approved/high-score candidates into ready posts
 - `POST /api/jobs/delete-bad-posts` - Deletes broken junk posts such as imported `Custom Styles`
 - `POST /api/jobs/stagger-post-release` - Keeps a fixed number of posts live and schedules the rest forward
 - `POST /api/jobs/mark-no-image-posts` - Marks posts without images as "needs_image"
 - `POST /api/jobs/mark-broken-images` - Marks posts with WP images as "needs_image"
 - `POST /api/jobs/restore-all` - Restores all posts to "ready" status
 - `POST /api/jobs/restore-posts-with-images` - Restores only posts with valid images
+
+### Admin Endpoints (for NerdyMugs `/admin` page)
+- `POST /api/admin/verify-password` - Validates admin password
+- `GET /api/admin/rules` - Lists weekly discovery rules
+- `POST /api/admin/rules` - Creates a weekly discovery rule
+- `PATCH /api/admin/rules/{id}` - Updates a weekly discovery rule
+- `DELETE /api/admin/rules/{id}` - Deletes a weekly discovery rule
+- `GET /api/admin/candidates` - Lists this week's product candidates
+- `POST /api/admin/candidates` - Updates candidate status
+- `POST /api/admin/trigger-discovery` - Runs discovery from the admin UI
+- `POST /api/admin/trigger-generation` - Runs generation from the admin UI
 
 ## CRON_SECRET for API Jobs
 
@@ -108,17 +137,19 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 ```
 
 ## Next Steps (To Complete)
-1. Rotate `CRON_SECRET` in Vercel and local env files because the old value was documented in repo notes.
-2. Remove any browser-side use of admin tokens from the paired NerdyMugs frontend.
-3. Decide whether `/api/posts/recent` should become authenticated or filtered to public-only content.
-4. Restrict WordPress import artifact URLs to an allowlist or local-only workflow.
-5. Point `nerdymugs.com` and `www.nerdymugs.com` at this Vercel frontend
-6. Set frontend env `NERDYMUGS_SITE_URL=https://nerdymugs.com` and redeploy after domain cutover
-7. Use Supabase to improve scheduled posts before they go live, especially missing `image_url` values in `products`
-8. Redeploy the frontend after future release batches if you want fresh static HTML and sitemap entries for newly public posts
+1. Apply the `admin_settings` migration to the live Supabase database.
+2. Merge `DEV` → `main` in both repos and deploy to Vercel.
+3. Verify `https://www.nerdymugs.com/admin` loads the password gate.
+4. Rotate `CRON_SECRET` in Vercel and local env files because the old value was documented in repo notes.
+5. Decide whether `/api/posts/recent` should become authenticated or filtered to public-only content.
+6. Point `nerdymugs.com` and `www.nerdymugs.com` at this Vercel frontend (if not already done).
+7. Set frontend env `NERDYMUGS_SITE_URL=https://nerdymugs.com` and redeploy after domain cutover.
+8. Use Supabase or the `/admin` page to improve scheduled posts before they go live, especially missing `image_url` values in `products`.
+9. Redeploy the frontend after future release batches if you want fresh static HTML and sitemap entries for newly public posts.
 
 ## Key Files to Modify
-- `NerdyMugs-The-Machine/app/src/App.tsx` - Grid fetch + SPA detail state
+- `NerdyMugs-The-Machine/app/src/App.tsx` - Grid fetch + SPA detail state + `/admin` route
+- `NerdyMugs-The-Machine/app/src/components/AdminPage.tsx` - Admin dashboard UI
 - `NerdyMugs-The-Machine/app/src/components/Navigation.tsx` - Responsive top menu
 - `NerdyMugs-The-Machine/app/src/components/SiteFooter.tsx` - Footer links and copyright
 - `NerdyMugs-The-Machine/app/src/components/ProductCard.tsx` - Card image rendering and click target
@@ -126,8 +157,10 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 - `NerdyMugs-The-Machine/app/scripts/generate-static-pages.mjs` - Static post HTML, sitemap, and robots generation
 - `NerdyMugs-The-Machine/app/vite.config.ts` - Cache-busting transform
 - `NerdyMugs-The-Machine/app/vercel.json` - SPA rewrite for clean post paths
-- `OCC-Clockwork-Wizards/app/api/jobs/delete-bad-posts/route.ts` - Junk post deletion job
-- `OCC-Clockwork-Wizards/app/api/jobs/stagger-post-release/route.ts` - Release scheduling job
+- `OCC-Clockwork-Wizards/app/api/admin/*` - Admin endpoints for rules/candidates/jobs
+- `OCC-Clockwork-Wizards/lib/adminAuth.ts` - Admin password verification
+- `OCC-Clockwork-Wizards/app/api/jobs/weekly-discovery/route.ts` - Weekly discovery job
+- `OCC-Clockwork-Wizards/app/api/jobs/generate-weekly-posts/route.ts` - Weekly generation job
 - `OCC-Clockwork-Wizards/app/api/posts/[slug]/route.ts` - Detail endpoint with CORS
 
 ## Important Notes

@@ -4,7 +4,19 @@
 
 ### 1. Set Up Weekly Rules
 
-Before the weekend, add discovery rules to Supabase:
+You have two options: use the NerdyMugs `/admin` page, or insert rules directly into Supabase.
+
+#### Option A: Use the Admin Page (Recommended)
+
+1. Go to `https://www.nerdymugs.com/admin`.
+2. Enter the admin password (initial: `NERDYMUGS1234!`).
+3. Open the **Rules** tab.
+4. Click **Add Rule**, fill in category/tags/allocation/max candidates/min score, and save.
+5. Toggle rules active/inactive as needed.
+
+You can change the admin password anytime by editing the `password` value in the OCC `admin_settings` table row with id `00000000-0000-0000-0000-000000000000`.
+
+#### Option B: Insert Rules Directly in Supabase
 
 ```sql
 INSERT INTO weekly_discovery_rules (
@@ -46,7 +58,16 @@ curl -sS -X POST "https://app-liart-five-43.vercel.app/api/jobs/weekly-discovery
 
 ### 3. Review Candidates
 
-In Supabase, query this week's candidates:
+You can review candidates in the NerdyMugs `/admin` page under the **Candidates** tab, or directly in Supabase.
+
+#### Option A: Use the Admin Page
+
+1. Go to `https://www.nerdymugs.com/admin` and log in.
+2. Open the **Candidates** tab.
+3. Select the week you want to review (defaults to the current week).
+4. Click **Approve**, **Reject**, or **Review** for each candidate.
+
+#### Option B: Query in Supabase
 
 ```sql
 SELECT 

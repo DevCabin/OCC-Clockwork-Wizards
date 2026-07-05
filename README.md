@@ -1,6 +1,6 @@
-# OCC Clockwork Wizards — V1 API Pipeline
+# OCC Clockwork Wizards — Weekly Autonomous Content Loop
 
-**Version:** `1.0.4`
+**Version:** `2.0.2`
 **Live base URL:** `https://app-liart-five-43.vercel.app`
 **GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`
 **Stack:** Next.js 14 (App Router) · TypeScript · Supabase · Firecrawl · OpenAI · Vercel
@@ -9,13 +9,13 @@
 
 ## What This Repo Is
 
-This is the **backend data pipeline only**. It:
+This is the **backend content engine** for NerdyMugs. It runs a weekly autonomous loop:
 
-1. Discovers products from Amazon via Firecrawl
-2. Scores them for relevance using OpenAI
-3. Stores prepared product inventory in Supabase
-4. Generates AI-written markdown posts for each product with lifecycle status support
-5. Exposes everything via open JSON API endpoints
+1. **Weekend discovery**: reads `weekly_discovery_rules`, searches Amazon via Firecrawl, scores products with OpenAI, and stores candidates in `weekly_product_candidates`.
+2. **Human review (optional)**: an admin can approve/reject candidates in Supabase or via the NerdyMugs `/admin` page.
+3. **Early-week generation**: turns approved or high-score candidates into `ready` posts in the `posts`/`products` tables.
+4. **Publication**: posts become public automatically when `status = ready` and `scheduled_for <= now`.
+5. **Public API**: exposes only public, image-having posts to the NerdyMugs frontend.
 
 **No frontend lives here.** The NerdyMugs Vite/React frontend is in a separate repo and consumes these endpoints.
 
@@ -32,14 +32,25 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `GET` | `/api/posts/recent` | None | Recent inventory/audit feed (currently broader than the public ready feed) |
 | `GET` | `/api/posts/ready` | None | Publicly visible posts only |
 | `GET` | `/api/posts/[slug]` | None | Individual public post detail payload with CORS |
-| `POST` | `/api/jobs/daily-products` | Bearer token | Trigger product discovery |
-| `POST` | `/api/jobs/daily-posts` | Bearer token | Trigger post generation |
-| `POST` | `/api/jobs/import-wordpress` | Bearer token | Import legacy WordPress archive records |
+| `POST` | `/api/jobs/weekly-discovery` | Bearer token | Run weekend discovery against active rules |
+| `POST` | `/api/jobs/generate-weekly-posts` | Bearer token | Turn approved/high-score candidates into posts |
+| `POST` | `/api/jobs/daily-products` | Bearer token | Legacy daily product discovery |
+| `POST` | `/api/jobs/daily-posts` | Bearer token | Legacy daily post generation |
+| `POST` | `/api/jobs/import-wordpress` | Bearer token | Disabled — returns 410 |
 | `POST` | `/api/jobs/hide-no-image-posts` | Bearer token | Hide WP posts with no product image (mark needs_review) |
 | `POST` | `/api/jobs/delete-bad-posts` | Bearer token | Delete broken junk posts from the live inventory |
 | `POST` | `/api/jobs/stagger-post-release` | Bearer token | Keep N posts live and schedule the rest forward |
 | `POST` | `/api/jobs/repair-affiliate-links` | Bearer token | Fix nerdymugs.com links → Amazon with fallback |
 | `POST` | `/api/posts/mark-published` | Bearer token | Mark a post as published by `id` or `slug` |
+| `POST` | `/api/admin/verify-password` | None | Verify admin password for NerdyMugs `/admin` |
+| `GET` | `/api/admin/rules` | None | List weekly discovery rules |
+| `POST` | `/api/admin/rules` | Admin password | Create a weekly discovery rule |
+| `PATCH` | `/api/admin/rules/[id]` | Admin password | Update a weekly discovery rule |
+| `DELETE` | `/api/admin/rules/[id]` | Admin password | Delete a weekly discovery rule |
+| `GET` | `/api/admin/candidates` | None | List this week's product candidates |
+| `POST` | `/api/admin/candidates` | Admin password | Update candidate status |
+| `POST` | `/api/admin/trigger-discovery` | Admin password | Run discovery from the admin UI |
+| `POST` | `/api/admin/trigger-generation` | Admin password | Run generation from the admin UI |
 
 Query param: `?limit=N` (max 250 on `/api/posts/ready`, max 100 on `/api/posts/recent`).
 
@@ -52,10 +63,13 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 ```
 /
 ├── app/
-│   ├── api/jobs/daily-products/    # Product discovery + scoring job
-│   ├── api/jobs/daily-posts/       # Post generation job
+│   ├── api/admin/                  # Admin endpoints for NerdyMugs /admin
+│   ├── api/jobs/weekly-discovery/  # Weekly product discovery job
+│   ├── api/jobs/generate-weekly-posts/ # Weekly post generation job
+│   ├── api/jobs/daily-products/    # Legacy daily product discovery
+│   ├── api/jobs/daily-posts/       # Legacy daily post generation
 │   ├── api/jobs/delete-bad-posts/  # Delete obviously broken junk posts
-│   ├── api/jobs/import-wordpress/  # Legacy WordPress archive import job
+│   ├── api/jobs/import-wordpress/  # Disabled — returns 410
 │   ├── api/jobs/stagger-post-release/ # Schedule future post releases
 │   ├── api/products/latest/        # GET latest products
 │   ├── api/products/recent/        # GET recent products
@@ -65,6 +79,7 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 │   ├── layout.tsx
 │   └── page.tsx                    # Minimal API index page
 ├── lib/
+│   ├── adminAuth.ts                # Admin password verification helper
 │   ├── firecrawl.ts                # Firecrawl scrape + extract
 │   ├── openai.ts                   # Scoring + post generation
 │   ├── products.ts                 # RULE config + discovery logic
@@ -73,6 +88,7 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 │   ├── wordpressImport.mjs         # Shared WP import implementation
 │   └── types.ts                    # Zod schemas + TypeScript types
 ├── supabase/migrations/            # DB schema SQL
+├── docs/                           # Loop architecture, rules, evals
 ├── V1_ARCHITECTURE.md              # Full architecture + integration guide
 ├── CHANGELOG.md
 └── vercel.json                     # Cron schedule
@@ -104,9 +120,14 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 ## Cron Schedule
 
 ```json
-{ "path": "/api/jobs/daily-products", "schedule": "0 13 * * *"  }
-{ "path": "/api/jobs/daily-posts",    "schedule": "15 13 * * *" }
+{ "path": "/api/jobs/weekly-discovery",    "schedule": "0 14 * * 6" }
+{ "path": "/api/jobs/generate-weekly-posts", "schedule": "0 15 * * 1" }
 ```
+
+- **Saturday 14:00 UTC** — weekly discovery runs against active rules.
+- **Monday 15:00 UTC** — weekly generation turns approved/high-score candidates into ready posts.
+
+Legacy daily jobs remain in the repo but are no longer on the active cron schedule.
 
 ---
 
@@ -157,14 +178,20 @@ curl -sS -i "https://app-liart-five-43.vercel.app/api/posts/programmers-while-co
 - NerdyMugs frontend: `https://nerdymugs-the-machine.vercel.app`
 - Current flow: grid from `/api/posts/ready` → detail fetch from `/api/posts/[slug]` → Amazon CTA from `post.product_url`
 - `ready` and slug detail endpoints both send permissive CORS headers for the frontend.
-- Public inventory is now intentionally throttled:
-  - `30` posts live now
-  - future posts unlock automatically every 3 days via `scheduled_for`
-- Missing lower-grid images are currently tolerated; content quality and release control are the active priorities.
+- `/api/posts/ready` now excludes posts whose linked product has no `image_url`.
 - Security follow-up is now an active priority:
   - rotate `CRON_SECRET`
-  - remove any browser-side use of admin tokens
   - tighten `/api/posts/recent` if it should not expose non-public inventory
+
+### Admin UI
+
+- NerdyMugs has a password-protected `/admin` page.
+- Initial password: `NERDYMUGS1234!` (stored in OCC `admin_settings` table; change it directly in Supabase).
+- From `/admin` you can:
+  - manage weekly discovery rules,
+  - review/approve/reject this week's candidates,
+  - manually trigger discovery and generation jobs.
+- No `CRON_SECRET` or Supabase service role is exposed to the browser.
 
 ### Public visibility rules
 
