@@ -4,7 +4,12 @@ import { PUBLIC_CORS_HEADERS } from "@/lib/publicPosts";
 
 export const dynamic = "force-dynamic";
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS_HEADERS });
+}
+
 export async function POST(req: NextRequest) {
+
   const body = await req.json().catch(() => ({}));
   const password = body?.password;
 

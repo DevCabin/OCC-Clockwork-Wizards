@@ -6,7 +6,12 @@ import { weeklyDiscoveryRuleSchema } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS_HEADERS });
+}
+
 type RouteContext = {
+
   params: {
     id: string;
   };

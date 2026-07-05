@@ -5,7 +5,12 @@ import { PUBLIC_CORS_HEADERS } from "@/lib/publicPosts";
 
 export const dynamic = "force-dynamic";
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS_HEADERS });
+}
+
 function getWeekStartDate(date = new Date()): string {
+
   const d = new Date(date);
   const day = d.getDay();
   const diff = d.getDate() - day;

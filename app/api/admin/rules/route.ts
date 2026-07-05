@@ -6,7 +6,12 @@ import { weeklyDiscoveryRuleSchema } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: PUBLIC_CORS_HEADERS });
+}
+
 export async function GET() {
+
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("weekly_discovery_rules")
