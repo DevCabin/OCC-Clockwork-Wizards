@@ -99,11 +99,28 @@ export async function POST(req: NextRequest) {
 
     let postsGenerated = 0;
     let postsFailed = 0;
+    let postsSkippedNoImage = 0;
     const generatedPostIds: string[] = [];
 
     // Generate posts for each candidate
     for (const candidate of candidates as WeeklyProductCandidate[]) {
       try {
+        // Guard: never generate a post without a usable image. No-image posts
+        // render as "No image" on the frontend, so skip and flag the candidate.
+        const candidateImage = candidate.image_url?.trim();
+        if (!candidateImage) {
+          postsSkippedNoImage++;
+          await supabase
+            .from("weekly_product_candidates")
+            .update({
+              status: "needs_image",
+              error_message: "Skipped: no image_url captured during discovery",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", candidate.id);
+          continue;
+        }
+
         // Convert candidate to Product format for the generator
         const product: Product = {
           title: candidate.product_title,
@@ -211,6 +228,7 @@ export async function POST(req: NextRequest) {
           candidates_processed: candidates.length,
           posts_generated: postsGenerated,
           posts_failed: postsFailed,
+          posts_skipped_no_image: postsSkippedNoImage,
           post_ids: generatedPostIds,
         },
         error_message: errors.length > 0 ? errors.join("; ").slice(0, 1000) : null,
@@ -224,6 +242,7 @@ export async function POST(req: NextRequest) {
       candidatesProcessed: candidates.length,
       postsGenerated,
       postsFailed,
+      postsSkippedNoImage,
       postIds: generatedPostIds,
       errors: errors.slice(0, 5),
     });
