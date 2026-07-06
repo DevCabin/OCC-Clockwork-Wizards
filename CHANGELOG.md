@@ -1,6 +1,34 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-07-06 - v2.0.4: No-Image Weekly Loop Cleanup
+
+### Added
+- `POST /api/jobs/delete-no-image-posts`
+  - Protected by `CRON_SECRET`.
+  - Dry-run by default (`{"dryRun": false}` to actually delete).
+  - Finds posts whose linked product has no usable `image_url` and deletes both the post and the orphaned product row.
+
+### Changed
+- `POST /api/jobs/generate-weekly-posts`
+  - Now skips candidates with no `image_url` instead of creating a "No image" post.
+  - Skipped candidates are marked `status = 'needs_image'` with a clear error message.
+  - Run summary now includes `posts_skipped_no_image`.
+
+### Fixed
+- `GET /api/posts/ready`
+  - Switched to `products!inner(image_url)` join so posts without a linked product are excluded at the database level.
+  - Added a code-level safety filter for null/empty `image_url` to prevent any remaining "No image" cards from leaking to NerdyMugs.
+
+### Verified
+- `npx tsc --noEmit` passes.
+- `npm run build` passes.
+- New route `/api/jobs/delete-no-image-posts` is registered in the build output.
+
+### Version
+- Bumped backend package version from `2.0.3` to `2.0.4`.
+
 ## 2026-07-05 - v2.0.3: Admin API Hardening + Discovery Improvements
+
 
 ### Added
 - `GET /api/admin/runs` — returns recent `content_generation_runs` for the admin dashboard.
