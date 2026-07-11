@@ -1,5 +1,10 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-07-11 - Public Inventory Privacy
+
+### Fixed
+- `GET /api/posts/recent` now applies the same public visibility, schedule, and usable-image rules as the ready feed. Future and non-public inventory are no longer exposed through this unauthenticated endpoint.
+
 ## 2026-07-11 - Recover Images Before Publishing
 
 ### Fixed
