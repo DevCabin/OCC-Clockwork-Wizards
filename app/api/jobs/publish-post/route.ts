@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recoverProductImage } from "@/lib/postImageRecovery";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,9 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabaseClient();
 
-    let query = supabase.from("posts").select("id, title, slug, status, published_at, scheduled_for");
+    let query = supabase
+      .from("posts")
+      .select("id, title, slug, status, published_at, scheduled_for, products(id, title, product_url, image_url)");
 
     if (post_id) {
       query = query.eq("id", post_id);
@@ -51,6 +54,38 @@ export async function POST(req: NextRequest) {
     }
 
     const foundPost = post[0];
+    const rawProduct = foundPost.products as {
+      id?: string;
+      title?: string;
+      product_url?: string;
+      image_url?: string | null;
+    } | Array<{
+      id?: string;
+      title?: string;
+      product_url?: string;
+      image_url?: string | null;
+    }> | null;
+    const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
+
+    if (!product?.image_url?.trim()) {
+      if (!product?.id || !product.product_url) {
+        return NextResponse.json({ success: false, error: "Post has no recoverable product image" }, { status: 409 });
+      }
+      const imageUrl = await recoverProductImage({
+        title: product.title || foundPost.title,
+        productUrl: product.product_url,
+      });
+      if (!imageUrl) {
+        return NextResponse.json({ success: false, error: "No matching product image found; post was not published" }, { status: 409 });
+      }
+      const { error: imageError } = await supabase
+        .from("products")
+        .update({ image_url: imageUrl })
+        .eq("id", product.id);
+      if (imageError) {
+        return NextResponse.json({ success: false, error: imageError.message }, { status: 500 });
+      }
+    }
 
     const { error: updateError } = await supabase
       .from("posts")

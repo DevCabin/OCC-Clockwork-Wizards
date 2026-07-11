@@ -1,10 +1,13 @@
 # OCC Clockwork Wizards - Changelog
 
-## 2026-07-11 - CSV Images Required
+## 2026-07-11 - Recover Images Before Publishing
 
 ### Fixed
-- `POST /api/jobs/import-csv-products` now rejects CSV products with a missing image URL, as well as malformed or synthetic image URLs. No image-less CSV product can be stored or become a post.
-- The daily product and post jobs now skip image-less records, preventing discovery or legacy inventory from creating new no-image posts.
+- Image-less products stay in private inventory instead of being discarded. Invalid and synthetic image URLs remain rejected.
+- Manual publishing now attempts to recover a matching product image first and refuses publication if none is found.
+
+### Added
+- `POST /api/jobs/prepare-scheduled-post-images` runs daily before scheduled releases. It recovers a real image for posts due in the next 30 hours, or moves an unresolved post to `needs_review` rather than publishing it image-less.
 
 ## 2026-07-06 - v2.0.4: No-Image Weekly Loop Cleanup
 

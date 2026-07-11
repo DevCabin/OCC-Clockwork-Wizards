@@ -44,9 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   const existingProductIds = new Set((existingPosts ?? []).map((p) => p.product_id as string));
-  const candidates = (products ?? []).filter(
-    (p) => !existingProductIds.has(p.id) && Boolean(p.image_url?.trim())
-  );
+  const candidates = (products ?? []).filter((p) => !existingProductIds.has(p.id));
 
   const rows: Array<{
     product_id: string;
