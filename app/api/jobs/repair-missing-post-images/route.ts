@@ -21,9 +21,8 @@ function getProduct(value: unknown): JoinedProduct | null {
 }
 
 /**
- * Daily release gate. Attempts image recovery for posts due in the next day.
- * A failed lookup is held for review instead of being published without an
- * image or deleted.
+ * Controlled backlog repair. It repairs only high-confidence matches and
+ * never deletes records or changes their publish state.
  */
 export async function POST(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -32,25 +31,16 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const dryRun = body?.dryRun === true;
-  const windowHours = Number.isFinite(Number(body?.windowHours))
-    ? Math.min(Math.max(Number(body.windowHours), 1), 72)
-    : 30;
+  const dryRun = body?.dryRun !== false;
   const maxPosts = Number.isFinite(Number(body?.maxPosts))
     ? Math.min(Math.max(Number(body.maxPosts), 1), 20)
     : 5;
-  const now = new Date();
-  const deadline = new Date(now.getTime() + windowHours * 60 * 60 * 1000);
   const supabase = getSupabaseClient();
-
   const { data, error } = await supabase
     .from("posts")
-    .select("id, slug, title, scheduled_for, products(id, title, product_url, description, price, image_url)")
-    .eq("status", "ready")
-    .not("scheduled_for", "is", null)
-    .gte("scheduled_for", now.toISOString())
-    .lte("scheduled_for", deadline.toISOString())
-    .order("scheduled_for", { ascending: true });
+    .select("id, slug, title, status, products(id, title, product_url, description, price, image_url)")
+    .in("status", ["ready", "published"])
+    .order("created_at", { ascending: true });
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -60,8 +50,8 @@ export async function POST(req: NextRequest) {
     .map((post) => ({ ...post, product: getProduct(post.products) }))
     .filter((post) => !post.product?.image_url?.trim())
     .slice(0, maxPosts);
-  const repaired: string[] = [];
-  const heldForReview: string[] = [];
+  const repaired: Array<{ slug: string; confidence: number }> = [];
+  const unresolved: string[] = [];
   const errors: string[] = [];
 
   for (const post of targets) {
@@ -70,7 +60,6 @@ export async function POST(req: NextRequest) {
       errors.push(`${post.slug}: linked product not found`);
       continue;
     }
-
     try {
       const recovered = await recoverProductImage({
         title: product.title || post.title,
@@ -78,38 +67,30 @@ export async function POST(req: NextRequest) {
         description: product.description,
         price: product.price,
       });
-
-      if (recovered) {
-        if (!dryRun) {
-          const { error: updateError } = await supabase
-            .from("products")
-            .update({ image_url: recovered.imageUrl })
-            .eq("id", product.id);
-          if (updateError) throw new Error(updateError.message);
-        }
-        repaired.push(`${post.slug} (${recovered.confidence.toFixed(2)})`);
-      } else {
-        if (!dryRun) {
-          const { error: updateError } = await supabase
-            .from("posts")
-            .update({ status: "needs_review", scheduled_for: null })
-            .eq("id", post.id);
-          if (updateError) throw new Error(updateError.message);
-        }
-        heldForReview.push(post.slug);
+      if (!recovered) {
+        unresolved.push(post.slug);
+        continue;
       }
-    } catch (recoveryError) {
-      errors.push(`${post.slug}: ${recoveryError instanceof Error ? recoveryError.message : String(recoveryError)}`);
+      if (!dryRun) {
+        const { error: updateError } = await supabase
+          .from("products")
+          .update({ image_url: recovered.imageUrl })
+          .eq("id", product.id);
+        if (updateError) throw new Error(updateError.message);
+      }
+      repaired.push({ slug: post.slug, confidence: recovered.confidence });
+    } catch (repairError) {
+      errors.push(`${post.slug}: ${repairError instanceof Error ? repairError.message : String(repairError)}`);
     }
   }
 
   return NextResponse.json({
     success: true,
     dryRun,
-    windowHours,
     targets: targets.length,
     repaired,
-    heldForReview,
+    unresolved,
     errors,
+    nextStep: targets.length === maxPosts ? "Run another batch to continue." : "Backlog complete.",
   });
 }

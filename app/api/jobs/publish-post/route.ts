@@ -71,16 +71,16 @@ export async function POST(req: NextRequest) {
       if (!product?.id || !product.product_url) {
         return NextResponse.json({ success: false, error: "Post has no recoverable product image" }, { status: 409 });
       }
-      const imageUrl = await recoverProductImage({
+      const recovered = await recoverProductImage({
         title: product.title || foundPost.title,
         productUrl: product.product_url,
       });
-      if (!imageUrl) {
+      if (!recovered) {
         return NextResponse.json({ success: false, error: "No matching product image found; post was not published" }, { status: 409 });
       }
       const { error: imageError } = await supabase
         .from("products")
-        .update({ image_url: imageUrl })
+        .update({ image_url: recovered.imageUrl })
         .eq("id", product.id);
       if (imageError) {
         return NextResponse.json({ success: false, error: imageError.message }, { status: 500 });
