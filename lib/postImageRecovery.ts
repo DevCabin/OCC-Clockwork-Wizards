@@ -81,8 +81,8 @@ export async function recoverProductImage({
   description,
   price,
 }: ProductImageRecoveryInput): Promise<RecoveredProductImage | null> {
-  const candidates = await extractProductsFromUrl(productUrl);
-  const matches = candidates
+  const findBestMatch = (candidates: Awaited<ReturnType<typeof extractProductsFromUrl>>) => {
+    const matches = candidates
     .filter((candidate) => isUsableImageUrl(candidate.image_url))
     .map((candidate) => ({
       imageUrl: candidate.image_url!,
@@ -92,7 +92,14 @@ export async function recoverProductImage({
         priceMatchScore(price, candidate.price) * 0.1,
     }))
     .sort((a, b) => b.confidence - a.confidence);
+    return matches[0] && matches[0].confidence >= 0.55 ? matches[0] : null;
+  };
 
-  const best = matches[0];
-  return best && best.confidence >= 0.55 ? best : null;
+  const directMatch = findBestMatch(await extractProductsFromUrl(productUrl));
+  if (directMatch) return directMatch;
+
+  // Listings can be delisted or reused. Fall back to an Amazon title search
+  // and still require the same high-confidence title/description/price match.
+  const searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(title.slice(0, 160))}`;
+  return findBestMatch(await extractProductsFromUrl(searchUrl));
 }
