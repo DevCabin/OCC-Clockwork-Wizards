@@ -11,30 +11,17 @@ export async function scoreProductWithOpenAI(
   if (!apiKey) throw new Error("Missing OPENAI_API_KEY");
 
   const ruleContext = rule
-    ? {
-        name: rule.name,
-        category: rule.category,
-        tags: rule.tags,
-        search_terms: rule.search_terms,
-        min_score: rule.min_score,
-        max_candidates: rule.max_candidates,
-      }
-    : {
-        name: "nerdy-mugs",
-        keywords: ["funny mug", "nerdy mug", "geek coffee mug", "sci fi mug", "programmer mug"],
-        excludeKeywords: ["poster", "sticker", "download"],
-        priceMin: 10,
-        priceMax: 30,
-      };
+    ? `Category: ${rule.category}, Tags: ${rule.tags.join(", ")}, Min Score: ${rule.min_score}`
+    : "General mug/coffee cup relevance";
 
   const prompt = [
     "You are scoring product relevance for this rule:",
-    JSON.stringify(ruleContext),
+    ruleContext,
     "Product:",
     JSON.stringify(product),
     "Return ONLY strict JSON with keys score (0-100 number) and isRelevant (boolean).",
-    "Reject if excluded keywords present or product not likely a mug or coffee cup.",
-    "Favor keyword match and price inside range.",
+    "Reject if product not likely a mug or coffee cup.",
+    "Favor products matching the category and tags.",
   ].join("\n");
 
   const response = await fetch(OPENAI_URL, {

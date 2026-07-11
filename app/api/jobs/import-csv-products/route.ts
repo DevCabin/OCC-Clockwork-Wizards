@@ -36,6 +36,22 @@ function generateAmazonSearchUrl(title: string): string {
   return `https://www.amazon.com/s?k=${encoded}`;
 }
 
+function isValidImageUrl(url: string | undefined | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = new URL(trimmed);
+    if (!/^https?:$/.test(parsed.protocol)) return false;
+    // Reject obvious placeholder/synthetic Amazon image IDs
+    const path = parsed.pathname;
+    if (/\/images\/I\/\d+[A-Z]+(-|\.|$)/.test(path)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function generateSlug(title: string): string {
   return title
     .toLowerCase()
@@ -128,6 +144,12 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      const imageUrl = item.image_url?.trim();
+      if (imageUrl && !isValidImageUrl(imageUrl)) {
+        skipped.push(`Invalid image URL: ${title.slice(0, 50)}`);
+        continue;
+      }
+
       seenTitlesThisRun.add(normalizedTitle);
       seenUrlsThisRun.add(productUrl);
 
@@ -135,7 +157,7 @@ export async function POST(req: NextRequest) {
         rule_name: CSV_IMPORT_RULE,
         title,
         description: (item.description || "").trim(),
-        image_url: item.image_url?.trim() || null,
+        image_url: imageUrl || null,
         price: parsePrice(item.price),
         currency: "USD",
         product_url: productUrl,

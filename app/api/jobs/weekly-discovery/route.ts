@@ -27,26 +27,20 @@ function getWeekStartDate(date = new Date()): string {
 
 function buildAmazonSearchUrls(category: string, tags: string[], searchTerms: string[]): string[] {
   const urls: string[] = [];
+  
+  // Build queries from category + tags
   const terms = searchTerms.length > 0 ? searchTerms : tags;
-  const suffixes = ["mug", "coffee mug", "cup", "travel mug"];
-
+  
   for (const term of terms) {
-    for (const suffix of suffixes) {
-      const query = `${category} ${term} ${suffix}`.trim();
-      const encoded = encodeURIComponent(query);
-      urls.push(`https://www.amazon.com/s?k=${encoded}`);
-      // Add page 2 for more results
-      urls.push(`https://www.amazon.com/s?k=${encoded}&page=2`);
-    }
+    const query = `${category} ${term} mug`.trim();
+    const encoded = encodeURIComponent(query);
+    urls.push(`https://www.amazon.com/s?k=${encoded}`);
   }
-
-  // Generic category searches
-  for (const suffix of suffixes) {
-    const genericQuery = encodeURIComponent(`${category} ${suffix}`.trim());
-    urls.push(`https://www.amazon.com/s?k=${genericQuery}`);
-    urls.push(`https://www.amazon.com/s?k=${genericQuery}&page=2`);
-  }
-
+  
+  // Also add a generic category search
+  const genericQuery = encodeURIComponent(`${category} mug`);
+  urls.push(`https://www.amazon.com/s?k=${genericQuery}`);
+  
   return [...new Set(urls)]; // Deduplicate
 }
 
@@ -107,77 +101,48 @@ export async function POST(req: NextRequest) {
 
   const existingUrls = new Set(existingCandidates?.map(c => c.product_url) ?? []);
 
-  const ruleDebug: Record<string, unknown>[] = [];
-
   // Process each rule
   for (const rule of rules as WeeklyDiscoveryRule[]) {
-    const ruleLog: {
-      rule: string;
-      category: string;
-      minScore: number;
-      searchUrls: string[];
-      extractionCounts: number[];
-      domainFiltered: number;
-      duplicateFiltered: number;
-      scoreRejected: number;
-      schemaRejected: number;
-      accepted: number;
-      errors: string[];
-    } = {
-      rule: rule.name,
-      category: rule.category,
-      minScore: rule.min_score,
-      searchUrls: [],
-      extractionCounts: [],
-      domainFiltered: 0,
-      duplicateFiltered: 0,
-      scoreRejected: 0,
-      schemaRejected: 0,
-      accepted: 0,
-      errors: [],
-    };
-    ruleDebug.push(ruleLog);
-
     try {
+      // Calculate how many candidates to find for this rule
+      // For now, use max_candidates directly (allocation_percent can be used for smarter distribution)
       const targetCount = rule.max_candidates;
+      
+      // Build search URLs
       const searchUrls = buildAmazonSearchUrls(rule.category, rule.tags, rule.search_terms);
-      ruleLog.searchUrls = searchUrls;
-
+      
       const ruleCandidates: WeeklyProductCandidate[] = [];
-
+      
       for (const searchUrl of searchUrls) {
         if (ruleCandidates.length >= targetCount) break;
-
+        
         try {
           const extractedProducts = await extractProductsFromUrl(searchUrl);
-          ruleLog.extractionCounts.push(extractedProducts.length);
-
+          
           for (const product of extractedProducts) {
             if (ruleCandidates.length >= targetCount) break;
-
-            if (!domainAllowed(product.source_domain)) {
-              ruleLog.domainFiltered = (ruleLog.domainFiltered as number) + 1;
-              continue;
-            }
-
+            if (!domainAllowed(product.source_domain)) continue;
+            
+            const normalizedTitle = normalizeTitle(product.title);
+            
+            // Deduplicate against this week's existing candidates
             if (existingUrls.has(product.product_url)) {
               totalDuplicatesSkipped++;
-              ruleLog.duplicateFiltered = (ruleLog.duplicateFiltered as number) + 1;
               continue;
             }
-
+            
+            // Deduplicate against this run
             if (ruleCandidates.some(c => c.product_url === product.product_url)) {
               continue;
             }
-
+            
+            // Score the product
             try {
               const { score, isRelevant } = await scoreProductWithOpenAI(product, rule);
-
-              if (!isRelevant || score < rule.min_score) {
-                ruleLog.scoreRejected = (ruleLog.scoreRejected as number) + 1;
-                continue;
-              }
-
+              
+              if (!isRelevant || score < rule.min_score) continue;
+              
+              // Validate and create candidate
               const candidateData = {
                 product_title: product.title,
                 price: product.price,
@@ -188,13 +153,10 @@ export async function POST(req: NextRequest) {
                 source: product.source_domain ?? "amazon",
                 discovery_score: score,
               };
-
+              
               const validated = candidateProductSchema.safeParse(candidateData);
-              if (!validated.success) {
-                ruleLog.schemaRejected = (ruleLog.schemaRejected as number) + 1;
-                continue;
-              }
-
+              if (!validated.success) continue;
+              
               const candidate: Partial<WeeklyProductCandidate> = {
                 week_start_date: weekStartDate,
                 rule_id: rule.id,
@@ -205,44 +167,38 @@ export async function POST(req: NextRequest) {
                 status: "discovered",
                 raw_payload: product as Record<string, unknown>,
               };
-
+              
               ruleCandidates.push(candidate as WeeklyProductCandidate);
               existingUrls.add(product.product_url);
               totalCandidatesFound++;
-              ruleLog.accepted = (ruleLog.accepted as number) + 1;
+              
             } catch (err) {
-              const msg = `Scoring failed for ${product.product_url}: ${String(err)}`;
-              (ruleLog.errors as string[]).push(msg);
-              errors.push(msg);
+              errors.push(`Scoring failed for ${product.product_url}: ${String(err)}`);
             }
           }
         } catch (err) {
-          const msg = `Extraction failed for ${searchUrl}: ${String(err)}`;
-          (ruleLog.errors as string[]).push(msg);
-          errors.push(msg);
+          errors.push(`Extraction failed for ${searchUrl}: ${String(err)}`);
         }
       }
-
+      
+      // Insert candidates for this rule
       if (ruleCandidates.length > 0) {
         const { error: insertError } = await supabase
           .from("weekly_product_candidates")
-          .upsert(ruleCandidates, {
+          .upsert(ruleCandidates, { 
             onConflict: "week_start_date, product_url",
-            ignoreDuplicates: true,
+            ignoreDuplicates: true 
           });
-
+        
         if (insertError) {
-          const msg = `Insert failed for rule ${rule.name}: ${insertError.message}`;
-          (ruleLog.errors as string[]).push(msg);
-          errors.push(msg);
+          errors.push(`Insert failed for rule ${rule.name}: ${insertError.message}`);
         } else {
           totalCandidatesInserted += ruleCandidates.length;
         }
       }
+      
     } catch (err) {
-      const msg = `Rule processing failed for ${rule.name}: ${String(err)}`;
-      (ruleLog.errors as string[]).push(msg);
-      errors.push(msg);
+      errors.push(`Rule processing failed for ${rule.name}: ${String(err)}`);
     }
   }
 
@@ -253,7 +209,6 @@ export async function POST(req: NextRequest) {
     candidatesFound: totalCandidatesFound,
     candidatesInserted: totalCandidatesInserted,
     duplicatesSkipped: totalDuplicatesSkipped,
-    errors: errors.slice(0, 10),
-    debug: ruleDebug,
+    errors: errors.slice(0, 10), // Limit errors in response
   });
 }
