@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     if (targets.length >= maxPosts) break;
     if (await imageNeedsRepair(post.product?.image_url)) targets.push(post);
   }
-  const repaired: Array<{ slug: string; confidence: number }> = [];
+  const repaired: Array<{ slug: string; confidence: number; imageUrl: string }> = [];
   const unresolved: string[] = [];
   const errors: string[] = [];
 
@@ -87,7 +87,11 @@ export async function POST(req: NextRequest) {
           .eq("id", product.id);
         if (updateError) throw new Error(updateError.message);
       }
-      repaired.push({ slug: post.slug, confidence: recovered.confidence });
+      repaired.push({
+        slug: post.slug,
+        confidence: recovered.confidence,
+        imageUrl: recovered.imageUrl,
+      });
     } catch (repairError) {
       errors.push(`${post.slug}: ${repairError instanceof Error ? repairError.message : String(repairError)}`);
     }

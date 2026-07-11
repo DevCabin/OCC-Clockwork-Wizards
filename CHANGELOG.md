@@ -10,6 +10,7 @@
 - `POST /api/jobs/prepare-scheduled-post-images` runs daily before scheduled releases. It recovers a real image for posts due in the next 30 hours, or moves an unresolved post to `needs_review` rather than publishing it image-less.
 - `POST /api/jobs/repair-missing-post-images` repairs the existing backlog in small, opt-in batches. It detects both absent and HTTP-broken image URLs, supports targeting specific slugs, and saves only high-confidence matches scored from title, description, price, and product URL; uncertain records are preserved unchanged for review.
 - Image recovery now falls back from an obsolete product URL to an Amazon search using the stored product title, while retaining the same high-confidence match requirement.
+- Image-repair dry runs now return each proposed replacement URL alongside its confidence score for visual approval before a live update.
 
 ## 2026-07-06 - v2.0.4: No-Image Weekly Loop Cleanup
 
