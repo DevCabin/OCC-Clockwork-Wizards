@@ -8,7 +8,7 @@
 
 ### Added
 - `POST /api/jobs/prepare-scheduled-post-images` runs daily before scheduled releases. It recovers a real image for posts due in the next 30 hours, or moves an unresolved post to `needs_review` rather than publishing it image-less.
-- `POST /api/jobs/repair-missing-post-images` repairs the existing backlog in small, opt-in batches. It saves only high-confidence matches scored from title, description, price, and product URL; uncertain records are preserved unchanged for review.
+- `POST /api/jobs/repair-missing-post-images` repairs the existing backlog in small, opt-in batches. It detects both absent and HTTP-broken image URLs, supports targeting specific slugs, and saves only high-confidence matches scored from title, description, price, and product URL; uncertain records are preserved unchanged for review.
 
 ## 2026-07-06 - v2.0.4: No-Image Weekly Loop Cleanup
 

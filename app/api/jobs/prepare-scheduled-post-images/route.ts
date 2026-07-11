@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recoverProductImage } from "@/lib/postImageRecovery";
+import { imageNeedsRepair, recoverProductImage } from "@/lib/postImageRecovery";
 import { isAuthorizedCronRequest } from "@/lib/publicPosts";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -56,10 +56,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 
-  const targets = (data ?? [])
+  const candidates = (data ?? [])
     .map((post) => ({ ...post, product: getProduct(post.products) }))
-    .filter((post) => !post.product?.image_url?.trim())
-    .slice(0, maxPosts);
+    .filter((post) => Boolean(post.product));
+  const targets: typeof candidates = [];
+  for (const post of candidates) {
+    if (targets.length >= maxPosts) break;
+    if (await imageNeedsRepair(post.product?.image_url)) targets.push(post);
+  }
   const repaired: string[] = [];
   const heldForReview: string[] = [];
   const errors: string[] = [];

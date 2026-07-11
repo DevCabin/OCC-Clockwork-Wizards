@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recoverProductImage } from "@/lib/postImageRecovery";
+import { imageNeedsRepair, recoverProductImage } from "@/lib/postImageRecovery";
 import { isAuthorizedCronRequest } from "@/lib/publicPosts";
 import { getSupabaseClient } from "@/lib/supabase";
 
@@ -35,21 +35,30 @@ export async function POST(req: NextRequest) {
   const maxPosts = Number.isFinite(Number(body?.maxPosts))
     ? Math.min(Math.max(Number(body.maxPosts), 1), 20)
     : 5;
+  const slugs = Array.isArray(body?.slugs)
+    ? body.slugs.filter((slug: unknown): slug is string => typeof slug === "string" && slug.trim().length > 0)
+    : [];
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("posts")
     .select("id, slug, title, status, products(id, title, product_url, description, price, image_url)")
     .in("status", ["ready", "published"])
     .order("created_at", { ascending: true });
+  if (slugs.length > 0) query = query.in("slug", slugs);
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 
-  const targets = (data ?? [])
+  const candidates = (data ?? [])
     .map((post) => ({ ...post, product: getProduct(post.products) }))
-    .filter((post) => !post.product?.image_url?.trim())
-    .slice(0, maxPosts);
+    .filter((post) => Boolean(post.product));
+  const targets: typeof candidates = [];
+  for (const post of candidates) {
+    if (targets.length >= maxPosts) break;
+    if (await imageNeedsRepair(post.product?.image_url)) targets.push(post);
+  }
   const repaired: Array<{ slug: string; confidence: number }> = [];
   const unresolved: string[] = [];
   const errors: string[] = [];
@@ -87,6 +96,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     success: true,
     dryRun,
+    requestedSlugs: slugs,
     targets: targets.length,
     repaired,
     unresolved,

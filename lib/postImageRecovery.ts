@@ -36,6 +36,21 @@ function isUsableImageUrl(value: string | null | undefined): value is string {
   }
 }
 
+/**
+ * A syntactically valid URL is not enough: Amazon often retires a product
+ * image while leaving the old URL in inventory. Network failures are treated
+ * as unknown (not broken) so a transient outage never overwrites a good URL.
+ */
+export async function imageNeedsRepair(imageUrl: string | null | undefined): Promise<boolean> {
+  if (!isUsableImageUrl(imageUrl)) return true;
+  try {
+    const response = await fetch(imageUrl, { method: "HEAD", redirect: "follow" });
+    return !response.ok;
+  } catch {
+    return false;
+  }
+}
+
 function wordMatchScore(expectedText: string, candidateText: string): number {
   const expected = normalizedWords(expectedText);
   const candidate = normalizedWords(candidateText);

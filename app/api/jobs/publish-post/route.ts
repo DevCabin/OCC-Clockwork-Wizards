@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recoverProductImage } from "@/lib/postImageRecovery";
+import { imageNeedsRepair, recoverProductImage } from "@/lib/postImageRecovery";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     }> | null;
     const product = Array.isArray(rawProduct) ? rawProduct[0] : rawProduct;
 
-    if (!product?.image_url?.trim()) {
+    if (await imageNeedsRepair(product?.image_url)) {
       if (!product?.id || !product.product_url) {
         return NextResponse.json({ success: false, error: "Post has no recoverable product image" }, { status: 409 });
       }
