@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
 
       for (const product of extractedProducts) {
         if (!domainAllowed(product.source_domain)) continue;
+        if (!product.image_url?.trim()) continue;
 
         const normalizedTitle = normalizeTitle(product.title);
         if (existingNormalizedTitles.has(normalizedTitle) || seenTitlesThisRun.has(normalizedTitle)) {

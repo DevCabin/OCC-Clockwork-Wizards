@@ -144,9 +144,13 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const imageUrl = item.image_url?.trim();
-      if (imageUrl && !isValidImageUrl(imageUrl)) {
-        skipped.push(`Invalid image URL: ${title.slice(0, 50)}`);
+      const imageUrl = item.image_url?.trim() ?? "";
+      if (!isValidImageUrl(imageUrl)) {
+        skipped.push(
+          imageUrl
+            ? `Invalid image URL: ${title.slice(0, 50)}`
+            : `Missing image URL: ${title.slice(0, 50)}`
+        );
         continue;
       }
 
@@ -157,7 +161,7 @@ export async function POST(req: NextRequest) {
         rule_name: CSV_IMPORT_RULE,
         title,
         description: (item.description || "").trim(),
-        image_url: imageUrl || null,
+        image_url: imageUrl,
         price: parsePrice(item.price),
         currency: "USD",
         product_url: productUrl,
