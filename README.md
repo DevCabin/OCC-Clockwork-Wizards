@@ -29,7 +29,7 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 |---|---|---|---|
 | `GET` | `/api/products/latest` | None | Latest products (default 3) |
 | `GET` | `/api/products/recent` | None | Recent products (default 21) |
-| `GET` | `/api/posts/recent` | None | Recent inventory/audit feed (currently broader than the public ready feed) |
+| `GET` | `/api/posts/recent` | None | Recent public posts with usable images |
 | `GET` | `/api/posts/ready` | None | Publicly visible posts only |
 | `GET` | `/api/posts/[slug]` | None | Individual public post detail payload with CORS |
 | `POST` | `/api/jobs/weekly-discovery` | Bearer token | Run weekend discovery against active rules |
@@ -113,7 +113,7 @@ See [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) for full documentation includin
 - Treat `CRON_SECRET` as a server-only admin token. Never commit it to docs, scripts, or repo notes.
 - Do not pass `CRON_SECRET` through frontend env vars or browser-triggered flows.
 - `GET /api/posts/ready` and `GET /api/posts/[slug]` are the intended public content endpoints.
-- `GET /api/posts/recent` currently returns broader inventory data and should be treated as an internal/audit surface until it is narrowed or protected.
+- `GET /api/posts/recent` applies the same public visibility, schedule, and usable-image checks as the ready feed.
 
 ---
 
@@ -181,7 +181,7 @@ curl -sS -i "https://app-liart-five-43.vercel.app/api/posts/programmers-while-co
 - `/api/posts/ready` now excludes posts whose linked product has no `image_url`.
 - Security follow-up is now an active priority:
   - rotate `CRON_SECRET`
-  - tighten `/api/posts/recent` if it should not expose non-public inventory
+  - keep public read routes limited to visible, scheduled-eligible inventory
 
 ### Admin UI
 
@@ -223,7 +223,7 @@ Helpful workflow:
 3. Copy the `product_id` from a post row.
 4. Open the matching row in `products` and update `image_url` or `product_url`.
 5. Save changes and spot-check the live API:
-   - `/api/posts/recent?limit=100` shows the full recent inventory sample
+   - `/api/posts/recent?limit=100` shows the recent public inventory sample
    - `/api/posts/ready?limit=250` shows only currently public posts
 
 Important:

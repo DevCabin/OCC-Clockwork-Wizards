@@ -57,7 +57,7 @@ Build a working coffee mug affiliate website with:
 - Header logo/brand links back to the homepage
 - Browser back and `Back to all posts` return from detail view to grid
 - Detail CTA links to Amazon through `post.product_url` with `tag=georgwebsi-20`
-- Top posts display Amazon product images; lower missing images are acceptable for now
+- Public posts require usable product images; missing or broken images are handled by the repair workflow before release.
 
 ## Recently Fixed
 
@@ -92,7 +92,7 @@ Build a working coffee mug affiliate website with:
 - `GET /api/posts/{slug}` - Returns a single public post for the detail page
 
 ### Internal/Audit Endpoints
-- `GET /api/posts/recent?limit=100` - Returns broader inventory and should not be treated as the public site feed
+- `GET /api/posts/recent?limit=100` - Returns recent public, scheduled-visible posts with usable images
 
 ### Weekly Loop Job Endpoints (CRON_SECRET required)
 - `POST /api/jobs/weekly-discovery` - Runs weekend discovery against active rules
@@ -141,7 +141,7 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 2. Merge `DEV` → `main` in both repos and deploy to Vercel.
 3. Verify `https://www.nerdymugs.com/admin` loads the password gate.
 4. Rotate `CRON_SECRET` in Vercel and local env files because the old value was documented in repo notes.
-5. Decide whether `/api/posts/recent` should become authenticated or filtered to public-only content.
+5. Keep `/api/posts/recent` filtered to public-only content.
 6. Point `nerdymugs.com` and `www.nerdymugs.com` at this Vercel frontend (if not already done).
 7. Set frontend env `NERDYMUGS_SITE_URL=https://nerdymugs.com` and redeploy after domain cutover.
 8. Use Supabase or the `/admin` page to improve scheduled posts before they go live, especially missing `image_url` values in `products`.
@@ -164,7 +164,7 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 - `OCC-Clockwork-Wizards/app/api/posts/[slug]/route.ts` - Detail endpoint with CORS
 
 ## Important Notes
-- Backend API is working, but security follow-up is required
+- Backend API public inventory and protected job boundaries have been hardened.
 - 148 posts remain after junk cleanup
 - Only 30 are intentionally public right now
 - Future posts are date-gated at the API level and unlock automatically every 3 days
@@ -175,7 +175,7 @@ curl -sS "https://app-liart-five-43.vercel.app/api/posts/ready?limit=3"
 - Future scheduled posts will become accessible automatically via SPA fallback when their `scheduled_for` date arrives
 - The old documented `CRON_SECRET` value should be treated as compromised until rotated
 - `/api/posts/ready` and `/api/posts/[slug]` are the intended public read surfaces
-- `/api/posts/recent` currently exposes broader lifecycle data than the public site needs
+- `/api/posts/recent` returns only public lifecycle data.
 
 ## How To Update Upcoming Posts
 
