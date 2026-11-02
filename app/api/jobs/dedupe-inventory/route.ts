@@ -47,11 +47,20 @@ function canonicalUrl(url: string): string {
   }
 }
 
-function productKey(product: ProductRow): string {
+function productKey(product: ProductRow): string | null {
   const asin = extractAsin(product.product_url);
   if (asin) return `asin:${asin}`;
-  return `url:${canonicalUrl(product.product_url)}`;
+  // Only fall back to URL identity for real product paths (/dp/, /gp/...).
+  // Generic Amazon search URLs (e.g. ".../s?k=...") must never be treated as
+  // the same product — doing so collapses hundreds of distinct items into one
+  // false-duplicate group.
+  if (isRealProductUrl(product.product_url)) {
+    return `url:${canonicalUrl(product.product_url)}`;
+  }
+  return null;
 }
+
+const MAX_GROUP_SIZE = 25; // Safety: a real duplicate set is never this large.
 
 function usableImage(url: string | null): boolean {
   if (!url) return false;
@@ -135,12 +144,19 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[] })
   }
 
   const groups = new Map<string, ProductRow[]>();
+  let nonDedupable = 0;
   for (const product of products) {
     const key = productKey(product);
+    if (!key) {
+      nonDedupable += 1;
+      continue;
+    }
     const bucket = groups.get(key);
     if (bucket) bucket.push(product);
     else groups.set(key, [product]);
   }
+
+  let skippedLargeGroups = 0;
 
   const postIdsToDelete = new Set<string>();
   const productIdsToDelete = new Set<string>();
@@ -152,6 +168,10 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[] })
 
   for (const [key, bucket] of groups.entries()) {
     if (bucket.length <= 1) continue;
+    if (bucket.length > MAX_GROUP_SIZE) {
+      skippedLargeGroups += 1;
+      continue;
+    }
 
     const ranked = bucket
       .map((product) => ({
@@ -241,6 +261,8 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[] })
     postsDeleted: options.dryRun ? 0 : postIdsToDelete.size,
     productsDeleted: options.dryRun ? 0 : productIdsToDelete.size,
     skippedProtected,
+    nonDedupable,
+    skippedLargeGroups,
     groups: removableGroups.slice(0, 50),
   };
 }

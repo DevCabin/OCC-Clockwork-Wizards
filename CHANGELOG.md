@@ -5,7 +5,7 @@
 ### Added
 - `POST/GET /api/jobs/dedupe-inventory` — automatic de-duplication of `products`/`posts` keyed by **ASIN → canonical URL**.
   - Manual POST defaults to **dry-run** (preview); the cron GET runs **live**.
-  - Safe guards: keeps one winner per duplicate group (prefers the record with a published post), never deletes WordPress-imported legacy posts, never deletes posts referenced by weekly candidates.
+  - Safe guards: keeps one winner per duplicate group (prefers the record with a published post), never deletes WordPress-imported legacy posts, never deletes posts referenced by weekly candidates. Generic Amazon search URLs are never treated as duplicates, and any group larger than 25 is skipped as suspicious.
 - `GET /api/admin/candidates/export?week=YYYY-MM-DD` — compiles a week's discovered candidates into a downloadable **CSV** (the "Saturday CSV" artifact). Requires `CRON_SECRET`.
 - Weekly dedupe cron: `/api/jobs/dedupe-inventory` on Fridays `0 13 * * 5` (before Saturday discovery).
 
