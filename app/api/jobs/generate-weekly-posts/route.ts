@@ -64,18 +64,40 @@ export async function POST(req: NextRequest) {
   const runId = runRecord.id;
 
   try {
-    // Fetch approved or high-confidence candidates that aren't drafted yet
-    const { data: candidates, error: candidatesError } = await supabase
+    // Load per-rule min_score thresholds so publishing is automatic by min_score.
+    const { data: rulesData } = await supabase
+      .from("weekly_discovery_rules")
+      .select("id, min_score");
+    const minScoreByRule = new Map<string, number>();
+    for (const rule of rulesData ?? []) {
+      const r = rule as { id?: string; min_score?: number | null };
+      if (r.id) minScoreByRule.set(r.id, typeof r.min_score === "number" ? r.min_score : 80);
+    }
+
+    // Fetch candidates eligible for generation: approved OR discovered.
+    const { data: rawCandidates, error: candidatesError } = await supabase
       .from("weekly_product_candidates")
       .select("*")
       .eq("week_start_date", weekStartDate)
-      .or("status.eq.approved,and(status.eq.discovered,discovery_score.gte.80)")
+      .in("status", ["approved", "discovered"])
       .is("post_id", null)
-      .limit(maxPosts);
+      .order("discovery_score", { ascending: false })
+      .limit(maxPosts * 5);
 
     if (candidatesError) {
       throw new Error(`Failed to fetch candidates: ${candidatesError.message}`);
     }
+
+    // Automatic publish: approved always qualifies; discovered qualifies when its
+    // score meets the rule's min_score threshold. No human approval needed.
+    const candidates = (rawCandidates ?? [])
+      .filter((c) => {
+        const cand = c as WeeklyProductCandidate;
+        if (cand.status === "approved") return true;
+        const threshold = cand.rule_id ? minScoreByRule.get(cand.rule_id) ?? 80 : 80;
+        return typeof cand.discovery_score === "number" && cand.discovery_score >= threshold;
+      })
+      .slice(0, maxPosts);
 
     if (!candidates || candidates.length === 0) {
       // Update run record to completed with no work
@@ -215,6 +237,42 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Stagger the freshly generated batch so they don't all go live at once.
+    // Keep the top `liveCount` posts published now; schedule the rest one-per-`spacingDays`.
+    let staggeredScheduled = 0;
+    const staggerLiveCount = Number.isFinite(Number(body?.liveCount))
+      ? Math.max(0, Number(body.liveCount))
+      : 3;
+    const staggerSpacingDays = Number.isFinite(Number(body?.spacingDays))
+      ? Math.max(1, Number(body.spacingDays))
+      : 1;
+
+    if (body?.stagger !== false && generatedPostIds.length > 0) {
+      const now = Date.now();
+      const liveIds = generatedPostIds.slice(0, staggerLiveCount);
+      const scheduleIds = generatedPostIds.slice(staggerLiveCount);
+
+      if (liveIds.length > 0) {
+        await supabase
+          .from("posts")
+          .update({
+            status: "published",
+            scheduled_for: null,
+            published_at: new Date(now).toISOString(),
+          })
+          .in("id", liveIds);
+      }
+
+      for (let i = 0; i < scheduleIds.length; i += 1) {
+        const when = new Date(now + (i + 1) * staggerSpacingDays * 24 * 60 * 60 * 1000).toISOString();
+        await supabase
+          .from("posts")
+          .update({ status: "ready", scheduled_for: when, published_at: null })
+          .eq("id", scheduleIds[i]);
+        staggeredScheduled += 1;
+      }
+    }
+
     // Update run record
     const finalStatus = postsFailed > 0 && postsGenerated === 0 ? "failed" : 
                         postsFailed > 0 ? "partial" : "completed";
@@ -229,6 +287,8 @@ export async function POST(req: NextRequest) {
           posts_generated: postsGenerated,
           posts_failed: postsFailed,
           posts_skipped_no_image: postsSkippedNoImage,
+          posts_live: Math.min(staggerLiveCount, generatedPostIds.length),
+          posts_scheduled: staggeredScheduled,
           post_ids: generatedPostIds,
         },
         error_message: errors.length > 0 ? errors.join("; ").slice(0, 1000) : null,
@@ -243,6 +303,7 @@ export async function POST(req: NextRequest) {
       postsGenerated,
       postsFailed,
       postsSkippedNoImage,
+      staggeredScheduled,
       postIds: generatedPostIds,
       errors: errors.slice(0, 5),
     });
@@ -263,4 +324,10 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+
+// Vercel Cron uses GET; reuse POST logic (still CRON_SECRET-guarded).
+export async function GET(req: NextRequest) {
+  return POST(req);
 }

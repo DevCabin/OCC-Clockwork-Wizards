@@ -122,3 +122,9 @@ export async function POST(req: NextRequest) {
     errors,
   });
 }
+
+
+// Vercel Cron uses GET; reuse POST logic (still CRON_SECRET-guarded).
+export async function GET(req: NextRequest) {
+  return POST(req);
+}

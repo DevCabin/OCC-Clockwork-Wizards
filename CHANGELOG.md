@@ -1,5 +1,24 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-11-02 - Weekly Loop Hardening: Auto-Publish, Daily-Drip Stagger, Dedupe & CSV Export
+
+### Added
+- `POST/GET /api/jobs/dedupe-inventory` — automatic de-duplication of `products`/`posts` keyed by **ASIN → canonical URL**.
+  - Manual POST defaults to **dry-run** (preview); the cron GET runs **live**.
+  - Safe guards: keeps one winner per duplicate group (prefers the record with a published post), never deletes WordPress-imported legacy posts, never deletes posts referenced by weekly candidates.
+- `GET /api/admin/candidates/export?week=YYYY-MM-DD` — compiles a week's discovered candidates into a downloadable **CSV** (the "Saturday CSV" artifact). Requires `CRON_SECRET`.
+- Weekly dedupe cron: `/api/jobs/dedupe-inventory` on Fridays `0 13 * * 5` (before Saturday discovery).
+
+### Changed
+- `POST /api/jobs/generate-weekly-posts` now **auto-publishes by each rule's `min_score`** (no manual approval needed). Candidates with `discovery_score >= rule.min_score` are generated automatically.
+- Generation now **staggers the batch automatically**: keeps the top `liveCount` (default 3) posts published and schedules the rest **one per `spacingDays`** (default 1/day) via `scheduled_for`. Response now includes `staggeredScheduled`.
+- `weekly-discovery` de-duplication is now **cross-week and cross-source**: builds ASIN/URL keys from *all* historical products and candidates (not just the current week) so the same product is never re-added.
+- Cron-triggered job routes (`weekly-discovery`, `generate-weekly-posts`, `daily-products`, `daily-posts`, `prepare-scheduled-post-images`) now expose **GET** handlers so **Vercel Cron can invoke them** (Vercel Cron uses GET) while remaining `CRON_SECRET`-guarded.
+
+### Verified
+- `npx tsc --noEmit` passes.
+- `npm run build` passes; new routes registered: `/api/jobs/dedupe-inventory`, `/api/admin/candidates/export`.
+
 ## 2026-07-11 - Public Inventory Privacy
 
 ### Fixed

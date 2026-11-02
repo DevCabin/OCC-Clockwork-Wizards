@@ -32,8 +32,10 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `GET` | `/api/posts/recent` | None | Recent public posts with usable images |
 | `GET` | `/api/posts/ready` | None | Publicly visible posts only |
 | `GET` | `/api/posts/[slug]` | None | Individual public post detail payload with CORS |
-| `POST` | `/api/jobs/weekly-discovery` | Bearer token | Run weekend discovery against active rules |
-| `POST` | `/api/jobs/generate-weekly-posts` | Bearer token | Turn approved/high-score candidates into posts |
+| `POST` | `/api/jobs/weekly-discovery` | Bearer token | Run weekend discovery against active rules (GET also supported for cron) |
+| `POST` | `/api/jobs/generate-weekly-posts` | Bearer token | Auto-publish candidates at/above each rule's `min_score`; staggers the batch (keeps top N live, rest daily) |
+| `POST`/`GET` | `/api/jobs/dedupe-inventory` | Bearer token | De-duplicate products/posts by ASIN→URL. POST defaults to dry-run; GET (cron) runs live |
+| `GET` | `/api/admin/candidates/export?week=YYYY-MM-DD` | Bearer token | Download a week's discovered candidates as CSV |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Legacy daily product discovery |
 | `POST` | `/api/jobs/daily-posts` | Bearer token | Legacy daily post generation |
 | `POST` | `/api/jobs/import-wordpress` | Bearer token | Disabled — returns 410 |

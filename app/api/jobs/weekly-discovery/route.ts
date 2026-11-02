@@ -93,13 +93,39 @@ export async function POST(req: NextRequest) {
   let totalCandidatesInserted = 0;
   let totalDuplicatesSkipped = 0;
 
-  // Get existing candidates for this week (for deduplication)
-  const { data: existingCandidates } = await supabase
-    .from("weekly_product_candidates")
-    .select("product_url")
-    .eq("week_start_date", weekStartDate);
+  // Cross-week, cross-source dedupe: build ASIN/URL keys from ALL existing
+  // products and ALL existing candidates so discovery never re-adds something
+  // already in inventory (any week) or already proposed.
+  function dedupeKey(url: string): string {
+    const asinMatch = url.match(/\/(?:dp|gp\/product|gp\/aw\/d|product)\/([A-Z0-9]{10})/i);
+    if (asinMatch) return `asin:${asinMatch[1].toUpperCase()}`;
+    try {
+      const parsed = new URL(url);
+      parsed.search = "";
+      parsed.hash = "";
+      const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+      return `url:${parsed.protocol}//${host}${parsed.pathname.replace(/\/+$/, "")}`;
+    } catch {
+      return `url:${url.split("?")[0].replace(/\/+$/, "")}`;
+    }
+  }
 
-  const existingUrls = new Set(existingCandidates?.map(c => c.product_url) ?? []);
+  const { data: existingProductUrls } = await supabase
+    .from("products")
+    .select("product_url");
+  const { data: existingCandidateUrls } = await supabase
+    .from("weekly_product_candidates")
+    .select("product_url");
+
+  const existingKeys = new Set<string>();
+  for (const row of existingProductUrls ?? []) {
+    const u = (row as { product_url?: string }).product_url;
+    if (u) existingKeys.add(dedupeKey(u));
+  }
+  for (const row of existingCandidateUrls ?? []) {
+    const u = (row as { product_url?: string }).product_url;
+    if (u) existingKeys.add(dedupeKey(u));
+  }
 
   // Process each rule
   for (const rule of rules as WeeklyDiscoveryRule[]) {
@@ -125,14 +151,15 @@ export async function POST(req: NextRequest) {
             
             const normalizedTitle = normalizeTitle(product.title);
             
-            // Deduplicate against this week's existing candidates
-            if (existingUrls.has(product.product_url)) {
+            // Deduplicate against ALL prior products/candidates (ASIN or URL).
+            const key = dedupeKey(product.product_url);
+            if (existingKeys.has(key)) {
               totalDuplicatesSkipped++;
               continue;
             }
-            
+
             // Deduplicate against this run
-            if (ruleCandidates.some(c => c.product_url === product.product_url)) {
+            if (ruleCandidates.some((c) => dedupeKey(c.product_url) === key)) {
               continue;
             }
             
@@ -169,7 +196,7 @@ export async function POST(req: NextRequest) {
               };
               
               ruleCandidates.push(candidate as WeeklyProductCandidate);
-              existingUrls.add(product.product_url);
+              existingKeys.add(key);
               totalCandidatesFound++;
               
             } catch (err) {
@@ -211,4 +238,10 @@ export async function POST(req: NextRequest) {
     duplicatesSkipped: totalDuplicatesSkipped,
     errors: errors.slice(0, 10), // Limit errors in response
   });
+}
+
+
+// Vercel Cron uses GET; reuse POST logic (still CRON_SECRET-guarded).
+export async function GET(req: NextRequest) {
+  return POST(req);
 }
