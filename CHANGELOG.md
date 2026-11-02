@@ -1,5 +1,17 @@
 # OCC Clockwork Wizards - Changelog
 
+## [2.1.0] - 2026-11-02
+
+### Version
+- Bumped backend package version `2.0.3` → `2.1.0`.
+
+### Highlights
+- Weekly loop hardening: `min_score` auto-publish + daily-drip stagger.
+- Automatic `dedupe-inventory` (ASIN → real product URL), safety-guarded.
+- Single Hobby-safe daily orchestrator cron (`/api/cron/orchestrator`, 13:00 UTC).
+- CSV candidate export endpoint + Vercel-Cron GET handlers.
+- `developers.md` onboarding guide + docs housekeeping.
+
 ## 2026-11-02 - Docs Housekeeping & Developer Onboarding
 
 ### Added
