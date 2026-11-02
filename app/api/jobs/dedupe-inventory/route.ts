@@ -26,6 +26,8 @@ interface PostRow {
   created_at: string;
   content_source: string | null;
   slug: string;
+  product_title: string | null;
+  title: string | null;
 }
 
 const DEFAULT_PROTECT_SOURCES = ["wordpress-import"];
@@ -122,7 +124,7 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[]; m
 
   const { data: postsData, error: postsError } = await supabase
     .from("posts")
-    .select("id, product_id, status, published_at, scheduled_for, created_at, content_source, slug");
+    .select("id, product_id, status, published_at, scheduled_for, created_at, content_source, slug, product_title, title");
   if (postsError) throw new Error(postsError.message);
 
   const { data: candidateData } = await supabase
@@ -220,6 +222,49 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[]; m
     });
   }
 
+  // ---- Post-level dedupe: collapse duplicate POSTS by normalized product_title ----
+  // Catches visible dupes where the same mug is listed under multiple ASINs (different
+  // products, identical display title). We delete duplicate posts only (never products
+  // here); orphaned products are harmless because the feed is built from posts.
+  const postGroups = new Map<string, PostRow[]>();
+  for (const post of posts) {
+    const label = normalizeTitle(post.product_title || post.title || "");
+    if (!label) continue;
+    const bucket = postGroups.get(label);
+    if (bucket) bucket.push(post);
+    else postGroups.set(label, [post]);
+  }
+
+  let postTitleGroups = 0;
+  for (const bucket of postGroups.values()) {
+    if (bucket.length <= 1) continue;
+    if (bucket.length > MAX_GROUP_SIZE) {
+      skippedLargeGroups += 1;
+      continue;
+    }
+
+    const sorted = [...bucket].sort((a, b) => {
+      const ap = protectedPostIds.has(a.id) ? 1 : 0;
+      const bp = protectedPostIds.has(b.id) ? 1 : 0;
+      if (ap !== bp) return bp - ap; // keep protected first
+      const as = a.status === "published" ? 1 : 0;
+      const bs = b.status === "published" ? 1 : 0;
+      if (as !== bs) return bs - as; // keep published first
+      const at = Date.parse(a.published_at || a.created_at || "") || 0;
+      const bt = Date.parse(b.published_at || b.created_at || "") || 0;
+      if (at !== bt) return at - bt; // keep earliest (original)
+      return 0;
+    });
+
+    let removedHere = false;
+    for (const loser of sorted.slice(1)) {
+      if (protectedPostIds.has(loser.id)) continue;
+      postIdsToDelete.add(loser.id);
+      removedHere = true;
+    }
+    if (removedHere) postTitleGroups += 1;
+  }
+
   // Remove skipped-protected entries from deletion sets (defensive).
   for (const group of plan) {
     for (const item of group.remove) {
@@ -267,6 +312,7 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[]; m
     skippedProtected,
     nonDedupable,
     skippedLargeGroups,
+    postTitleGroups,
     groups: removableGroups.slice(0, 50),
   };
 }

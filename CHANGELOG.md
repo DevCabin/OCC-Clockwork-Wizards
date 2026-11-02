@@ -12,6 +12,7 @@
 - CSV candidate export endpoint + Vercel-Cron GET handlers.
 - `developers.md` onboarding guide + docs housekeeping.
 - Dedupe now also collapses URL-less/seach-URL products by **title** (key priority ASIN → URL → title), so title-based duplicates are removed without ever merging distinct ASIN products.
+- Dedupe also removes duplicate **posts** sharing an identical display title (keeps the protected/published/original), clearing the same-mug-multiple-ASIN visible dupes.
 
 ## 2026-11-02 - Docs Housekeeping & Developer Onboarding
 
