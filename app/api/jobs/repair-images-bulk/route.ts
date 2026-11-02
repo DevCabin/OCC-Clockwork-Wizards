@@ -172,5 +172,5 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   // Cron-triggered: run a small LIVE batch so the backlog drains automatically.
-  return run(req, { dryRun: false, maxPosts: 6, concurrency: 1 });
+  return run(req, { dryRun: false, maxPosts: 4, concurrency: 1 });
 }
