@@ -1,5 +1,10 @@
 # OCC Clockwork Wizards - Changelog
 
+## [2.2.0] - 2026-11-02
+
+### Added
+- `GET /api/posts/ready` now supports `offset` pagination, `q` full-text search (title/excerpt/product_title), and `category` (rule_name) filtering; the response includes `hasMore`. Filtering moved to the DB so paging is correct and complete.
+
 ## [2.1.0] - 2026-11-02
 
 ### Version

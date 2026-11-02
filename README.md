@@ -1,6 +1,6 @@
 # OCC Clockwork Wizards — Weekly Autonomous Content Loop
 
-**Version:** `2.1.0`
+**Version:** `2.2.0`
 **Live base URL:** `https://app-liart-five-43.vercel.app`
 **GitHub:** `https://github.com/DevCabin/OCC-Clockwork-Wizards`
 **Stack:** Next.js 14 (App Router) · TypeScript · Supabase · Firecrawl · OpenAI · Vercel
