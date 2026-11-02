@@ -1,5 +1,15 @@
 # OCC Clockwork Wizards - Changelog
 
+## [2.3.0] - 2026-11-02
+
+### Added
+- `GET/POST /api/jobs/audit-images` — scans the entire post history and reports how many posts have missing/broken images (absent, placeholder, synthetic, or `wp-content`).
+- `POST /api/jobs/repair-images-bulk` — parallel, retrying image recovery (Firecrawl product-URL lookup → Amazon title search, high-confidence only). Unresolvable posts are flagged `needs_review` so each run advances.
+- Daily cron (`0 16 * * *`) runs a small live repair batch (4/sequential) to drain the image backlog automatically.
+
+### Changed
+- **`wp-content` image URLs are treated as unusable everywhere** (old WordPress host is dead): excluded from the public `/api/posts/ready` feed, counted as missing by the audit, and targeted by recovery.
+
 ## [2.2.0] - 2026-11-02
 
 ### Added
