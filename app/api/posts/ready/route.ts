@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       products!inner(image_url)
     `)
     .not("products.image_url", "is", null)
+    .not("products.image_url", "ilike", "%wp-content%")
     .in("status", ["published", "ready"])
     .or(`scheduled_for.is.null,scheduled_for.lte.${nowIso}`);
 
@@ -65,7 +66,7 @@ export async function GET(req: NextRequest) {
       | undefined;
     if (!p) return false;
     const imageUrl = Array.isArray(p) ? p[0]?.image_url : p.image_url;
-    return Boolean(imageUrl && imageUrl.trim().length > 0);
+    return Boolean(imageUrl && imageUrl.trim().length > 0 && !/wp-content/i.test(imageUrl));
   };
 
   const visiblePosts = (data ?? []).filter(

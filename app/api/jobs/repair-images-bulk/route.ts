@@ -20,6 +20,7 @@ function isUsable(v: string | null | undefined): boolean {
   if (!v) return false;
   const t = v.trim();
   if (!t) return false;
+  if (/wp-content/i.test(t)) return false; // dead old WordPress uploads
   try {
     const u = new URL(t);
     if (!/^https?:$/.test(u.protocol)) return false;

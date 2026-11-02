@@ -24,8 +24,11 @@ function normalizedWords(value: string): Set<string> {
 
 function isUsableImageUrl(value: string | null | undefined): value is string {
   if (!value?.trim()) return false;
+  const raw = value.trim();
+  // Old WordPress-hosted uploads (nerdymugs.com/wp-content/...) are dead links.
+  if (/wp-content/i.test(raw)) return false;
   try {
-    const url = new URL(value.trim());
+    const url = new URL(raw);
     return (
       /^https?:$/.test(url.protocol) &&
       !/\/images\/I\/\d+[A-Z]+(-|\.|$)/.test(url.pathname) &&

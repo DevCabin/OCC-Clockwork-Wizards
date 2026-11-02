@@ -16,6 +16,7 @@ function getImage(products: Joined): string | null {
 
 function isUsableImageUrl(value: string | null): boolean {
   if (!value) return false;
+  if (/wp-content/i.test(value)) return false; // dead old WordPress uploads
   try {
     const url = new URL(value);
     if (!/^https?:$/.test(url.protocol)) return false;
