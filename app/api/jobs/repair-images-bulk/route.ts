@@ -92,13 +92,13 @@ async function recoverWithRetry(input: Parameters<typeof recoverProductImage>[0]
   throw lastError;
 }
 
-async function run(req: NextRequest) {
+async function run(req: NextRequest, forced?: Record<string, unknown>) {
   const secret = process.env.CRON_SECRET;
   if (!isAuthorizedCronRequest(req.headers.get("authorization"), secret)) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body = { ...(await req.json().catch(() => ({}))), ...(forced ?? {}) };
   const dryRun = body?.dryRun !== false;
   const maxPosts = clamp(body?.maxPosts, 1, 24, 12);
   const concurrency = clamp(body?.concurrency, 1, 6, 2);
@@ -126,7 +126,14 @@ async function run(req: NextRequest) {
         description: t.product.description,
         price: t.product.price,
       });
-      if (!rec) return { slug: t.post.slug, status: "unresolved" as const };
+      if (!rec) {
+        // No confident match: flag for human review so we don't retry forever
+        // and so each run makes monotonic progress through the backlog.
+        if (!dryRun) {
+          await supabase.from("posts").update({ status: "needs_review" }).eq("id", t.post.id);
+        }
+        return { slug: t.post.slug, status: "unresolved" as const };
+      }
       if (!dryRun) {
         const { error } = await supabase
           .from("products")
@@ -164,5 +171,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  return run(req);
+  // Cron-triggered: run a small LIVE batch so the backlog drains automatically.
+  return run(req, { dryRun: false, maxPosts: 6, concurrency: 1 });
 }

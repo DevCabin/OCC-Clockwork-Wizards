@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/orchestrator",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/jobs/repair-images-bulk",
+      "schedule": "0 16 * * *"
     }
   ]
 }
