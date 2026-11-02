@@ -4,19 +4,17 @@
 **Status:** ✅ Weekly autonomous loop validated end-to-end and hardened.
 
 ## What the loop does now (fully automatic)
-1. **Friday 13:00 UTC** — `GET /api/jobs/dedupe-inventory`
-   - Collapses duplicate products/posts keyed by **ASIN → real product URL**.
-   - Guards: keeps one winner/group (prefers a published post), never deletes WordPress-imported legacy posts, never deletes posts referenced by candidates, ignores generic Amazon search URLs, and skips any group larger than 25.
-   - Current live dry-run: **0 true duplicates** (294 products use search URLs and are not ASIN-dedupable; nothing deleted).
-2. **Saturday 14:00 UTC** — `GET/POST /api/jobs/weekly-discovery`
-   - Reads active rules → Firecrawl Amazon search → OpenAI score.
-   - De-dupes **cross-week and cross-source** by ASIN/URL against ALL prior products + candidates.
-   - Stores candidates (`discovered`).
-   - CSV of the week's candidates: `GET /api/admin/candidates/export?week=YYYY-MM-DD` (Bearer `CRON_SECRET`).
-3. **Monday 15:00 UTC** — `GET/POST /api/jobs/generate-weekly-posts`
-   - Auto-publishes candidates with `discovery_score >= rule.min_score` (no manual approval).
-   - Image guard: skips candidates without a usable image (`needs_image`).
-   - **Auto-staggers** the batch: keeps top `liveCount` (default 3) live, schedules the rest one per `spacingDays` (default 1/day) via `scheduled_for`.
+A **single daily Vercel cron** (Hobby-safe: 1 job, once/day) calls `/api/cron/orchestrator` at **13:00 UTC** and dispatches by UTC weekday:
+
+1. **Friday 13:00 UTC** — dedupe (via `/api/jobs/dedupe-inventory`)
+2. **Saturday 13:00 UTC** — discovery (via `/api/jobs/weekly-discovery`)
+3. **Monday 13:00 UTC** — generation (via `/api/jobs/generate-weekly-posts`)
+4. **Every day** — `prepare-scheduled-post-images` (keeps upcoming post images ready)
+
+Detail per job:
+- **Dedupe** (`dedupe-inventory`) collapses duplicates keyed by **ASIN → real product URL**; guards: keeps one winner/group (prefers a published post), never deletes WordPress-imported legacy posts or candidate-referenced posts, ignores generic search URLs, skips groups >25. Current live dry-run: **0 true duplicates**.
+- **Discovery** reads active rules → Firecrawl Amazon search → OpenAI score; de-dupes cross-week/cross-source by ASIN/URL; stores candidates; CSV via `GET /api/admin/candidates/export?week=YYYY-MM-DD`.
+- **Generation** auto-publishes candidates with `discovery_score >= rule.min_score` (no approval); image guard; auto-staggers the batch (top `liveCount` live, rest one per `spacingDays`).
 
 ## Public surface (unchanged)
 - `GET /api/posts/ready` / `GET /api/posts/[slug]` — date-gated, image-only public feed consumed by NerdyMugs.

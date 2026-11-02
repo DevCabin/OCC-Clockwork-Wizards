@@ -1,28 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/jobs/daily-products",
+      "path": "/api/cron/orchestrator",
       "schedule": "0 13 * * *"
-    },
-    {
-      "path": "/api/jobs/daily-posts",
-      "schedule": "15 13 * * *"
-    },
-    {
-      "path": "/api/jobs/prepare-scheduled-post-images",
-      "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/jobs/weekly-discovery",
-      "schedule": "0 14 * * 6"
-    },
-    {
-      "path": "/api/jobs/generate-weekly-posts",
-      "schedule": "0 15 * * 1"
-    },
-    {
-      "path": "/api/jobs/dedupe-inventory",
-      "schedule": "0 13 * * 5"
     }
   ]
 }

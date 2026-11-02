@@ -36,6 +36,7 @@ All endpoints live at `https://app-liart-five-43.vercel.app`.
 | `POST` | `/api/jobs/generate-weekly-posts` | Bearer token | Auto-publish candidates at/above each rule's `min_score`; staggers the batch (keeps top N live, rest daily) |
 | `POST`/`GET` | `/api/jobs/dedupe-inventory` | Bearer token | De-duplicate products/posts by ASIN→URL. POST defaults to dry-run; GET (cron) runs live |
 | `GET` | `/api/admin/candidates/export?week=YYYY-MM-DD` | Bearer token | Download a week's discovered candidates as CSV |
+| `GET`/`POST` | `/api/cron/orchestrator` | Bearer token | Single daily cron (Hobby-safe). Dispatches Fri→dedupe, Sat→discovery, Mon→generation, daily→image prep |
 | `POST` | `/api/jobs/daily-products` | Bearer token | Legacy daily product discovery |
 | `POST` | `/api/jobs/daily-posts` | Bearer token | Legacy daily post generation |
 | `POST` | `/api/jobs/import-wordpress` | Bearer token | Disabled — returns 410 |

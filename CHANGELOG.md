@@ -7,7 +7,7 @@
   - Manual POST defaults to **dry-run** (preview); the cron GET runs **live**.
   - Safe guards: keeps one winner per duplicate group (prefers the record with a published post), never deletes WordPress-imported legacy posts, never deletes posts referenced by weekly candidates. Generic Amazon search URLs are never treated as duplicates, and any group larger than 25 is skipped as suspicious.
 - `GET /api/admin/candidates/export?week=YYYY-MM-DD` — compiles a week's discovered candidates into a downloadable **CSV** (the "Saturday CSV" artifact). Requires `CRON_SECRET`.
-- Weekly dedupe cron: `/api/jobs/dedupe-inventory` on Fridays `0 13 * * 5` (before Saturday discovery).
+- Consolidated into a **single Hobby-safe daily orchestrator cron** `/api/cron/orchestrator` (`0 13 * * *`): Friday → dedupe, Saturday → discovery, Monday → generation, every day → `prepare-scheduled-post-images`. This replaces the previous six cron entries so the project stays within free-tier limits.
 
 ### Changed
 - `POST /api/jobs/generate-weekly-posts` now **auto-publishes by each rule's `min_score`** (no manual approval needed). Candidates with `discovery_score >= rule.min_score` are generated automatically.
