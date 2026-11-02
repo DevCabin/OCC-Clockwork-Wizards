@@ -76,6 +76,22 @@ function clamp(n: unknown, lo: number, hi: number, dflt: number): number {
   return Math.min(Math.max(v, lo), hi);
 }
 
+async function recoverWithRetry(input: Parameters<typeof recoverProductImage>[0], attempts = 3) {
+  let lastError: unknown;
+  for (let a = 0; a < attempts; a += 1) {
+    try {
+      return await recoverProductImage(input);
+    } catch (e) {
+      lastError = e;
+      const msg = String(e);
+      const retryable = /429|408|too many|timeout|rate limit/i.test(msg);
+      if (!retryable || a === attempts - 1) throw e;
+      await new Promise((resolve) => setTimeout(resolve, 2500 * (a + 1)));
+    }
+  }
+  throw lastError;
+}
+
 async function run(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!isAuthorizedCronRequest(req.headers.get("authorization"), secret)) {
@@ -85,7 +101,7 @@ async function run(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const dryRun = body?.dryRun !== false;
   const maxPosts = clamp(body?.maxPosts, 1, 24, 12);
-  const concurrency = clamp(body?.concurrency, 1, 10, 6);
+  const concurrency = clamp(body?.concurrency, 1, 6, 2);
   const useHttp = body?.httpCheck === true;
 
   const supabase = getSupabaseClient();
@@ -104,7 +120,7 @@ async function run(req: NextRequest) {
 
   const results = await pool(targets, concurrency, async (t) => {
     try {
-      const rec = await recoverProductImage({
+      const rec = await recoverWithRetry({
         title: t.product.title || t.post.title,
         productUrl: t.product.product_url,
         description: t.product.description,
