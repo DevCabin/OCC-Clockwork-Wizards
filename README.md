@@ -254,6 +254,7 @@ Important:
 
 ## Documentation
 
+- [`developers.md`](./developers.md) — **start here**: full onboarding walkthrough (architecture, data model, loop, API, frontend, runbooks)
 - [`V1_ARCHITECTURE.md`](./V1_ARCHITECTURE.md) — full pipeline, schema, API reference, integration guide
 - [`CHANGELOG.md`](./CHANGELOG.md) — change history
 - [`RESET_STRATEGY.md`](./RESET_STRATEGY.md) — recovery notes

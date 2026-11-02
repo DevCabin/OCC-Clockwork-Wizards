@@ -1,5 +1,7 @@
 # Weekly Content Loop - User Guide
 
+> **Updated 2026-11-02:** Publishing is now automatic by each rule's `min_score` (no manual approval required), a Friday dedupe run keeps inventory clean, and generation auto-staggers releases. The cron is a single daily orchestrator (13:00 UTC). See `developers.md`.
+
 ## Quick Start
 
 ### 1. Set Up Weekly Rules

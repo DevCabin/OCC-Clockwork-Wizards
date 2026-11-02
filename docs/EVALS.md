@@ -1,5 +1,7 @@
 # Evaluation Checklist for Weekly Loop
 
+> **Updated 2026-11-02:** Approval is now optional — generation auto-publishes candidates at/above `rule.min_score`. Discovery de-dupes cross-week/cross-source by ASIN/URL (no longer "within week only"). A dedupe job and CSV export exist. See `developers.md` for current behavior.
+
 Use this checklist to verify the weekly autonomous loop is working correctly.
 
 ---

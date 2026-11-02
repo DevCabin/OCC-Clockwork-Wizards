@@ -1,5 +1,7 @@
 # OCC Weekly Loop Architecture
 
+> **Updated 2026-11-02:** The loop now runs from a **single daily orchestrator cron** (`/api/cron/orchestrator`, 13:00 UTC → Fri dedupe / Sat discovery / Mon generation; daily image prep). Generation **auto-publishes by `min_score`** and **auto-staggers**. Discovery de-dupes cross-week by ASIN/URL. See `developers.md` for the authoritative walkthrough; some specifics below predate these changes.
+
 **Version:** 2.0.0  
 **Last Updated:** 2026-06-27
 

@@ -1,5 +1,7 @@
 # NerdyMugs Project Context
 
+> **Updated 2026-11-02:** Authoritative onboarding lives in `developers.md` (OCC repo). The weekly loop runs via a single daily orchestrator cron; generation auto-publishes by `min_score` and auto-staggers; a weekly dedupe job protects inventory. Details below may reflect an earlier date.
+
 ## Last Updated: 2026-07-05 3:46 PM CDT
 
 ## Project Goal

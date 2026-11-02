@@ -1,5 +1,15 @@
 # OCC Clockwork Wizards - Changelog
 
+## 2026-11-02 - Docs Housekeeping & Developer Onboarding
+
+### Added
+- `developers.md` — full senior→junior onboarding guide: architecture, data model, weekly loop, CSV fallback, API reference, frontend, local dev, secrets, runbooks, deployment, troubleshooting, code map, glossary.
+
+### Changed
+- Archived historical plans to `docs/archive/` (weekly inventory redesign, image placeholder fix, legacy post repair, WP live import plan).
+- Removed obsolete root docs (WP import status, next steps, session notes, reset strategy, and ad-hoc `FIX_NOW`/`RUN_JOBS`/`RESTORE_COMMANDS` txt files).
+- Added "current reality" banners to `PROJECT_CONTEXT.md`, `docs/LOOP_ARCHITECTURE.md`, `docs/WEEKLY_CONTENT_LOOP.md`, `docs/EVALS.md` pointing to `developers.md`.
+
 ## 2026-11-02 - Weekly Loop Hardening: Auto-Publish, Daily-Drip Stagger, Dedupe & CSV Export
 
 ### Added
