@@ -127,11 +127,6 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[]; m
     .select("id, product_id, status, published_at, scheduled_for, created_at, content_source, slug, product_title, title");
   if (postsError) throw new Error(postsError.message);
 
-  const { data: candidateData } = await supabase
-    .from("weekly_product_candidates")
-    .select("post_id")
-    .not("post_id", "is", null);
-
   const products = (productsData ?? []) as ProductRow[];
   const posts = (postsData ?? []) as PostRow[];
 
@@ -144,10 +139,8 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[]; m
       protectedPostIds.add(post.id);
     }
   }
-  for (const row of candidateData ?? []) {
-    const pid = (row as { post_id?: string | null }).post_id;
-    if (pid) protectedPostIds.add(pid);
-  }
+  // Note: candidate-referenced posts are NOT protected from deletion; when a
+  // duplicate post is deleted we null the candidate's post_id below instead.
 
   const groups = new Map<string, ProductRow[]>();
   let nonDedupable = 0;
@@ -286,11 +279,17 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[]; m
 
   if (!options.dryRun) {
     if (postIdsToDelete.size > 0) {
+      const deletedIds = Array.from(postIdsToDelete);
       const { error } = await supabase
         .from("posts")
         .delete()
-        .in("id", Array.from(postIdsToDelete));
+        .in("id", deletedIds);
       if (error) throw new Error(error.message);
+      // Keep candidates consistent: clear links to posts we just deleted.
+      await supabase
+        .from("weekly_product_candidates")
+        .update({ post_id: null })
+        .in("post_id", deletedIds);
     }
     if (productIdsToDelete.size > 0) {
       const { error } = await supabase
