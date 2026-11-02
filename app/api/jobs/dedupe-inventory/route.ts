@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/lib/supabase";
 import { isAuthorizedCronRequest } from "@/lib/publicPosts";
+import { normalizeTitle } from "@/lib/products";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -47,16 +48,19 @@ function canonicalUrl(url: string): string {
   }
 }
 
-function productKey(product: ProductRow): string | null {
+function productKey(product: ProductRow, match: string): string | null {
   const asin = extractAsin(product.product_url);
-  if (asin) return `asin:${asin}`;
-  // Only fall back to URL identity for real product paths (/dp/, /gp/...).
-  // Generic Amazon search URLs (e.g. ".../s?k=...") must never be treated as
-  // the same product — doing so collapses hundreds of distinct items into one
-  // false-duplicate group.
-  if (isRealProductUrl(product.product_url)) {
-    return `url:${canonicalUrl(product.product_url)}`;
+  const realUrl = isRealProductUrl(product.product_url);
+  const title = (product.normalized_title || normalizeTitle(product.title) || "").trim();
+
+  if (match === "title") {
+    return title ? `title:${title}` : null;
   }
+  // ASIN first, then a real product URL. Two distinct real products never merge by title.
+  if (asin) return `asin:${asin}`;
+  if (realUrl) return `url:${canonicalUrl(product.product_url)}`;
+  // Only for URL-less/search products (and only when allowed) fall back to title.
+  if (match === "any" && title) return `title:${title}`;
   return null;
 }
 
@@ -108,7 +112,7 @@ function compareRank(a: number[], b: number[]): number {
   return 0;
 }
 
-async function runDedupe(options: { dryRun: boolean; protectSources: string[] }) {
+async function runDedupe(options: { dryRun: boolean; protectSources: string[]; match: string }) {
   const supabase = getSupabaseClient();
 
   const { data: productsData, error: productsError } = await supabase
@@ -146,7 +150,7 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[] })
   const groups = new Map<string, ProductRow[]>();
   let nonDedupable = 0;
   for (const product of products) {
-    const key = productKey(product);
+    const key = productKey(product, options.match);
     if (!key) {
       nonDedupable += 1;
       continue;
@@ -279,9 +283,10 @@ export async function POST(req: NextRequest) {
     Array.isArray(body?.protectSources) && body.protectSources.length > 0
       ? (body.protectSources as string[])
       : DEFAULT_PROTECT_SOURCES;
+  const match = typeof body?.match === "string" ? (body.match as string) : "any";
 
   try {
-    const result = await runDedupe({ dryRun, protectSources });
+    const result = await runDedupe({ dryRun, protectSources, match });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     return NextResponse.json(
@@ -299,7 +304,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await runDedupe({ dryRun: false, protectSources: DEFAULT_PROTECT_SOURCES });
+    const result = await runDedupe({ dryRun: false, protectSources: DEFAULT_PROTECT_SOURCES, match: "any" });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     return NextResponse.json(

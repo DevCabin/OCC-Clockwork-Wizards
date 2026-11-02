@@ -11,6 +11,7 @@
 - Single Hobby-safe daily orchestrator cron (`/api/cron/orchestrator`, 13:00 UTC).
 - CSV candidate export endpoint + Vercel-Cron GET handlers.
 - `developers.md` onboarding guide + docs housekeeping.
+- Dedupe now also collapses URL-less/seach-URL products by **title** (key priority ASIN → URL → title), so title-based duplicates are removed without ever merging distinct ASIN products.
 
 ## 2026-11-02 - Docs Housekeeping & Developer Onboarding
 
