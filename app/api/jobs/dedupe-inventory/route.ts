@@ -313,6 +313,8 @@ async function runDedupe(options: { dryRun: boolean; protectSources: string[]; m
     nonDedupable,
     skippedLargeGroups,
     postTitleGroups,
+    postsFetched: posts.length,
+    postDupGroupsRaw: Array.from(postGroups.values()).filter((b) => b.length > 1).length,
     groups: removableGroups.slice(0, 50),
   };
 }
